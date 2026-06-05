@@ -159,6 +159,7 @@ AppController::AppController(QObject* parent)
     , m_fixes(new FfmpegBatchService(this))
     , m_preview(new FfmpegPreviewService(this))
     , m_telegram(new TelegramController(this))
+    , m_updates(new UpdateService(this))
 {
     QSettings settings;
     m_mediaCacheRootPath = settings.value("cache/root", defaultAppCacheRoot()).toString();
@@ -183,6 +184,7 @@ AppController::AppController(QObject* parent)
     connect(m_preview, &FfmpegPreviewService::finished, this, &AppController::onPreviewFinished);
 
     connect(m_telegram, &TelegramController::log, this, &AppController::appendLog);
+    connect(m_updates, &UpdateService::log, this, &AppController::appendLog);
     connect(m_telegram->service(), &TelegramService::fileSent, this, &AppController::onTelegramFileSent);
     connect(m_telegram->service(), &TelegramService::privateRecipientsImported, this,
         [this](const QVariantList& recipients, bool ok, const QString& details) {
@@ -444,6 +446,11 @@ QString AppController::mediaCacheSizeText() const
 double AppController::mediaCacheMaxSizeGb() const
 {
     return m_mediaCacheMaxSizeGb;
+}
+
+UpdateService* AppController::updates()
+{
+    return m_updates;
 }
 
 void AppController::setMediaCacheMaxSizeGb(double value)

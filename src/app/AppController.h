@@ -3,6 +3,7 @@
 
 #include "VideoFileModel.h"
 #include "services/FfmpegBatchService.h"
+#include "services/UpdateService.h"
 
 #include <QHash>
 #include <QObject>
@@ -46,6 +47,7 @@ class AppController : public QObject {
     Q_PROPERTY(QString mediaCacheRootPath READ mediaCacheRootPath WRITE setMediaCacheRootPath NOTIFY mediaCacheSettingsChanged)
     Q_PROPERTY(QString mediaCacheSizeText READ mediaCacheSizeText NOTIFY mediaCacheSettingsChanged)
     Q_PROPERTY(double mediaCacheMaxSizeGb READ mediaCacheMaxSizeGb WRITE setMediaCacheMaxSizeGb NOTIFY mediaCacheSettingsChanged)
+    Q_PROPERTY(UpdateService* updates READ updates CONSTANT)
     Q_PROPERTY(QString telegramBotToken READ telegramBotToken NOTIFY telegramSettingsChanged)
     Q_PROPERTY(QString telegramChatId READ telegramChatId NOTIFY telegramSettingsChanged)
     Q_PROPERTY(QVariantList telegramRecipients READ telegramRecipients NOTIFY telegramSettingsChanged)
@@ -92,6 +94,7 @@ public:
     QString mediaCacheSizeText() const;
     double mediaCacheMaxSizeGb() const;
     void setMediaCacheMaxSizeGb(double value);
+    UpdateService* updates();
     QString telegramBotToken() const;
     QString telegramChatId() const;
     QVariantList telegramRecipients() const;
@@ -225,6 +228,7 @@ private:
     FfmpegBatchService* m_fixes = nullptr;
     FfmpegPreviewService* m_preview = nullptr;
     TelegramController* m_telegram = nullptr;
+    UpdateService* m_updates = nullptr;
     QString m_logText;
     QString m_statusText;
     bool m_running = false;

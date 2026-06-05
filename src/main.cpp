@@ -11,6 +11,10 @@
 #include <QQuickStyle>
 #include <QUrl>
 
+#ifndef APP_VERSION
+#define APP_VERSION QT_VERSION_STR
+#endif
+
 namespace {
 void applyLoggingRules()
 {
@@ -59,7 +63,7 @@ int main(int argc, char* argv[])
     QCoreApplication::setOrganizationName("PP18");
     QCoreApplication::setOrganizationDomain("pp18.local");
     QCoreApplication::setApplicationName("VideoTools");
-    QCoreApplication::setApplicationVersion(QT_VERSION_STR);
+    QCoreApplication::setApplicationVersion(QStringLiteral(APP_VERSION));
 
     QQuickStyle::setStyle("Fusion");
     applySystemDefaultFont(app);

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(PP18_VideoTools LANGUAGES CXX)
+project(PP18_VideoTools VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -56,6 +56,8 @@ qt_add_executable(${PROJECT_NAME}
     src/services/TelegramController.cpp
     src/services/TelegramService.h
     src/services/TelegramService.cpp
+    src/services/UpdateService.h
+    src/services/UpdateService.cpp
     src/platform/NativeFileDialog.h
     src/platform/NativeFolderDialog.h
 )
@@ -113,6 +115,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/src")
+target_compile_definitions(${PROJECT_NAME} PRIVATE APP_VERSION="${PROJECT_VERSION}")
 
 # Логика копирования ffmpeg и ассетов
 set(FFMPEG_NAME "ffmpeg")

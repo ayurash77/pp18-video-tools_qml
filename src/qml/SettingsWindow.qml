@@ -223,35 +223,93 @@ Window {
                         title: "Основные"
                         Layout.fillWidth: true
 
-                        RowLayout {
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 16
+                            spacing: 10
 
-                            ColumnLayout {
+                            RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 4
-                                Label {
-                                    text: "Обновления"
-                                    color: "#d9deea"
-                                    font.pixelSize: 14
-                                    font.bold: true
-                                }
-                                Label {
-                                    text: "Проверка обновлений будет перенесена после базового QML-плеера и Telegram recipients."
-                                    color: "#8d95aa"
-                                    font.pixelSize: 12
-                                    wrapMode: Text.WordWrap
+                                spacing: 16
+
+                                ColumnLayout {
                                     Layout.fillWidth: true
+                                    spacing: 4
+                                    Label {
+                                        text: "Обновления"
+                                        color: "#d9deea"
+                                        font.pixelSize: 14
+                                        font.bold: true
+                                    }
+                                    Label {
+                                        text: "Текущая версия: " + appController.updates.currentVersion
+                                            + (appController.updates.latestVersion.length > 0 ? (" · Последняя: " + appController.updates.latestVersion) : "")
+                                        color: "#8d95aa"
+                                        font.family: settingsWindow.monoFamily
+                                        font.pixelSize: 12
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                }
+
+                                Button {
+                                    text: "История обновлений"
+                                    onClicked: appController.updates.openReleasesPage()
+                                }
+                                Button {
+                                    text: appController.updates.checking ? "Проверяю..." : "Проверить"
+                                    enabled: !appController.updates.checking
+                                    onClicked: appController.updates.checkForUpdates()
+                                }
+                                Button {
+                                    text: "Скачать"
+                                    visible: appController.updates.updateAvailable
+                                    enabled: appController.updates.assetAvailable
+                                    onClicked: appController.updates.downloadLatestAsset()
+                                }
+                                Button {
+                                    text: "Открыть релиз"
+                                    enabled: appController.updates.releaseUrl.length > 0
+                                    onClicked: appController.updates.openReleasePage()
                                 }
                             }
 
-                            Button {
-                                text: "История обновлений"
-                                enabled: false
+                            Label {
+                                text: appController.updates.statusText
+                                color: appController.updates.updateAvailable ? "#43bf83" : "#8d95aa"
+                                font.pixelSize: 12
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
                             }
-                            Button {
-                                text: "Проверить"
-                                enabled: false
+
+                            Label {
+                                visible: appController.updates.assetAvailable
+                                text: "Пакет для этой платформы: " + appController.updates.assetName
+                                    + (appController.updates.assetSizeText.length > 0 ? (" · " + appController.updates.assetSizeText) : "")
+                                color: "#af8f5d"
+                                font.family: settingsWindow.monoFamily
+                                font.pixelSize: 12
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
+                            }
+
+                            TextArea {
+                                visible: appController.updates.releaseNotes.length > 0
+                                text: appController.updates.releaseNotes
+                                readOnly: true
+                                selectByMouse: true
+                                wrapMode: TextEdit.WordWrap
+                                color: "#d9deea"
+                                selectedTextColor: "#12141a"
+                                selectionColor: "#af8f5d"
+                                font.family: settingsWindow.appFamily
+                                font.pixelSize: 12
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Math.min(140, Math.max(72, implicitHeight))
+                                background: Rectangle {
+                                    radius: 6
+                                    color: "#20232c"
+                                    border.color: "#343946"
+                                }
                             }
                         }
                     }
