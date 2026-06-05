@@ -244,10 +244,17 @@ Local workflows now exist:
 .github/workflows/release.yml
 ```
 
-GitHub Actions currently installs Qt directly through `aqtinstall` and uses Qt `6.8.3` with explicit archives:
+GitHub Actions currently installs Qt directly through `aqtinstall` and uses Qt `6.8.3`.
+Base Qt archives:
 
 ```text
-qtbase qtdeclarative qtmultimedia qtshadertools
+qtbase qtdeclarative
+```
+
+Extra Qt modules:
+
+```text
+qtmultimedia qtshadertools
 ```
 
 Do not switch Actions to `6.11.x` unless `aqt`/Qt online repositories show that this version is available for both macOS and Windows.

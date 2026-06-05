@@ -30,7 +30,8 @@ jobs:
           python -m pip install "aqtinstall==3.3.*"
           python -m aqt install-qt mac desktop "${QT_VERSION}" clang_64 \
             --outputdir "${GITHUB_WORKSPACE}/Qt" \
-            --archives qtbase qtdeclarative qtmultimedia qtshadertools
+            --archives qtbase qtdeclarative \
+            --modules qtmultimedia qtshadertools
           echo "QT_DIR=${GITHUB_WORKSPACE}/Qt/${QT_VERSION}/macos" >> "$GITHUB_ENV"
           echo "${GITHUB_WORKSPACE}/Qt/${QT_VERSION}/macos/bin" >> "$GITHUB_PATH"
 
@@ -63,7 +64,8 @@ jobs:
           python -m pip install "aqtinstall==3.3.*"
           python -m aqt install-qt windows desktop "${env:QT_VERSION}" win64_msvc2022_64 `
             --outputdir "${env:GITHUB_WORKSPACE}\Qt" `
-            --archives qtbase qtdeclarative qtmultimedia qtshadertools
+            --archives qtbase qtdeclarative `
+            --modules qtmultimedia qtshadertools
           $qtDir = "${env:GITHUB_WORKSPACE}\Qt\${env:QT_VERSION}\msvc2022_64"
           "QT_DIR=$qtDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "$qtDir\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
