@@ -244,7 +244,7 @@ Local workflows now exist:
 .github/workflows/release.yml
 ```
 
-GitHub Actions currently uses Qt `6.8.3` with explicit archives:
+GitHub Actions currently installs Qt directly through `aqtinstall` and uses Qt `6.8.3` with explicit archives:
 
 ```text
 qtbase qtdeclarative qtmultimedia qtshadertools

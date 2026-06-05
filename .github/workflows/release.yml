@@ -22,19 +22,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          version: ${{ env.QT_VERSION }}
-          host: mac
-          target: desktop
-          arch: clang_64
-          archives: qtbase qtdeclarative qtmultimedia qtshadertools
-          cache: true
+          python-version: "3.12"
+
+      - name: Install Qt
+        run: |
+          python -m pip install "aqtinstall==3.3.*"
+          python -m aqt install-qt mac desktop "${QT_VERSION}" clang_64 \
+            --outputdir "${GITHUB_WORKSPACE}/Qt" \
+            --archives qtbase qtdeclarative qtmultimedia qtshadertools
+          echo "QT_DIR=${GITHUB_WORKSPACE}/Qt/${QT_VERSION}/macos" >> "$GITHUB_ENV"
+          echo "${GITHUB_WORKSPACE}/Qt/${QT_VERSION}/macos/bin" >> "$GITHUB_PATH"
 
       - name: Configure
         run: |
           cmake -S . -B release/${APP_NAME}_macos-arm64 -G Ninja \
+            -DCMAKE_PREFIX_PATH="${QT_DIR}/lib/cmake" \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES=arm64
 
@@ -66,20 +71,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+      - name: Set up Python
+        uses: actions/setup-python@v6
         with:
-          version: ${{ env.QT_VERSION }}
-          host: windows
-          target: desktop
-          arch: win64_msvc2022_64
-          archives: qtbase qtdeclarative qtmultimedia qtshadertools
-          cache: true
+          python-version: "3.12"
+
+      - name: Install Qt
+        shell: pwsh
+        run: |
+          python -m pip install "aqtinstall==3.3.*"
+          python -m aqt install-qt windows desktop "${env:QT_VERSION}" win64_msvc2022_64 `
+            --outputdir "${env:GITHUB_WORKSPACE}\Qt" `
+            --archives qtbase qtdeclarative qtmultimedia qtshadertools
+          $qtDir = "${env:GITHUB_WORKSPACE}\Qt\${env:QT_VERSION}\msvc2022_64"
+          "QT_DIR=$qtDir" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "$qtDir\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Configure
         shell: pwsh
         run: |
-          cmake -S . -B release/${env:APP_NAME}_win-x64 -G "Visual Studio 17 2022" -A x64
+          cmake -S . -B release/${env:APP_NAME}_win-x64 -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_PREFIX_PATH="${env:QT_DIR}\lib\cmake"
 
       - name: Build
         shell: pwsh
