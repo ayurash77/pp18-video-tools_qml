@@ -14,5 +14,3 @@ release/
 out/
 *.app/
 
-# Local agent handoff notes
-AGENT_HANDOFF.md
