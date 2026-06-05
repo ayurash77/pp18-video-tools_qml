@@ -13,7 +13,7 @@
 #include <QVariantList>
 #include <QVector>
 
-class HandbrakePreviewService;
+class FfmpegPreviewService;
 class QProcess;
 class TelegramController;
 
@@ -181,7 +181,7 @@ private:
 private:
     VideoFileModel m_files;
     FfmpegBatchService* m_fixes = nullptr;
-    HandbrakePreviewService* m_preview = nullptr;
+    FfmpegPreviewService* m_preview = nullptr;
     TelegramController* m_telegram = nullptr;
     QString m_logText;
     QString m_statusText;

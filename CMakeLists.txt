@@ -107,8 +107,8 @@ add_executable(${PROJECT_NAME}
     src/qml/resources.qrc
     src/services/FfmpegBatchService.h
     src/services/FfmpegBatchService.cpp
-    src/services/HandbrakePreviewService.h
-    src/services/HandbrakePreviewService.cpp
+    src/services/FfmpegPreviewService.h
+    src/services/FfmpegPreviewService.cpp
     src/services/TelegramController.h
     src/services/TelegramController.cpp
     src/services/TelegramService.h

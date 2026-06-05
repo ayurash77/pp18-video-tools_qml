@@ -1,17 +1,17 @@
-#include "HandbrakePreviewService.h"
+#include "FfmpegPreviewService.h"
 
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 
-HandbrakePreviewService::HandbrakePreviewService(QObject* parent)
+FfmpegPreviewService::FfmpegPreviewService(QObject* parent)
     : QObject(parent)
     , m_toolPath(findTool("ffmpeg"))
 {
 }
 
-void HandbrakePreviewService::runPreviews(const QStringList& files)
+void FfmpegPreviewService::runPreviews(const QStringList& files)
 {
     if (m_proc)
         return;
@@ -47,20 +47,20 @@ void HandbrakePreviewService::runPreviews(const QStringList& files)
     startNext();
 }
 
-void HandbrakePreviewService::stop()
+void FfmpegPreviewService::stop()
 {
     m_stopRequested = true;
     if (m_proc)
         m_proc->kill();
 }
 
-QString HandbrakePreviewService::makeOutputPath(const QString& input)
+QString FfmpegPreviewService::makeOutputPath(const QString& input)
 {
     QFileInfo fi(input);
     return fi.dir().absoluteFilePath(fi.completeBaseName() + "__preview.mp4");
 }
 
-void HandbrakePreviewService::onReadyRead()
+void FfmpegPreviewService::onReadyRead()
 {
     if (!m_proc)
         return;
@@ -70,7 +70,7 @@ void HandbrakePreviewService::onReadyRead()
         emit log(text);
 }
 
-void HandbrakePreviewService::onProcessError(QProcess::ProcessError error)
+void FfmpegPreviewService::onProcessError(QProcess::ProcessError error)
 {
     if (!m_proc || error != QProcess::FailedToStart)
         return;
@@ -86,7 +86,7 @@ void HandbrakePreviewService::onProcessError(QProcess::ProcessError error)
     finish(false);
 }
 
-void HandbrakePreviewService::onProcessFinished(int exitCode, QProcess::ExitStatus status)
+void FfmpegPreviewService::onProcessFinished(int exitCode, QProcess::ExitStatus status)
 {
     if (!m_proc)
         return;
@@ -120,7 +120,7 @@ void HandbrakePreviewService::onProcessFinished(int exitCode, QProcess::ExitStat
     startNext();
 }
 
-QString HandbrakePreviewService::findTool(const QString& baseName) const
+QString FfmpegPreviewService::findTool(const QString& baseName) const
 {
     const QString appDir = QCoreApplication::applicationDirPath();
 #ifdef Q_OS_WIN
@@ -162,7 +162,7 @@ QString HandbrakePreviewService::findTool(const QString& baseName) const
 #endif
 }
 
-QStringList HandbrakePreviewService::buildArgs(const QString& input, const QString& output) const
+QStringList FfmpegPreviewService::buildArgs(const QString& input, const QString& output) const
 {
     return {
         "-y",
@@ -182,7 +182,7 @@ QStringList HandbrakePreviewService::buildArgs(const QString& input, const QStri
     };
 }
 
-void HandbrakePreviewService::startNext()
+void FfmpegPreviewService::startNext()
 {
     if (m_stopRequested) {
         finish(false);
@@ -208,14 +208,14 @@ void HandbrakePreviewService::startNext()
 
     m_proc = new QProcess(this);
     m_proc->setProcessChannelMode(QProcess::MergedChannels);
-    connect(m_proc, &QProcess::readyReadStandardOutput, this, &HandbrakePreviewService::onReadyRead);
-    connect(m_proc, &QProcess::errorOccurred, this, &HandbrakePreviewService::onProcessError);
+    connect(m_proc, &QProcess::readyReadStandardOutput, this, &FfmpegPreviewService::onReadyRead);
+    connect(m_proc, &QProcess::errorOccurred, this, &FfmpegPreviewService::onProcessError);
     connect(m_proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &HandbrakePreviewService::onProcessFinished);
+            this, &FfmpegPreviewService::onProcessFinished);
     m_proc->start(m_toolPath, buildArgs(input, output));
 }
 
-void HandbrakePreviewService::finish(bool ok)
+void FfmpegPreviewService::finish(bool ok)
 {
     if (ok)
         emit log("Превью готовы.");

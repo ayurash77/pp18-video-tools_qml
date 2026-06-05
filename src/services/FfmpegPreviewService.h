@@ -1,14 +1,14 @@
-#ifndef HANDBRAKEPREVIEWSERVICE_H
-#define HANDBRAKEPREVIEWSERVICE_H
+#ifndef FFMPEGPREVIEWSERVICE_H
+#define FFMPEGPREVIEWSERVICE_H
 
 #include <QObject>
 #include <QProcess>
 #include <QStringList>
 
-class HandbrakePreviewService : public QObject {
+class FfmpegPreviewService : public QObject {
     Q_OBJECT
 public:
-    explicit HandbrakePreviewService(QObject* parent = nullptr);
+    explicit FfmpegPreviewService(QObject* parent = nullptr);
 
     QString toolPath() const { return m_toolPath; }
     static QString makeOutputPath(const QString& input);
@@ -44,4 +44,4 @@ private:
     bool m_stopRequested = false;
 };
 
-#endif // HANDBRAKEPREVIEWSERVICE_H
+#endif // FFMPEGPREVIEWSERVICE_H

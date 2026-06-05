@@ -2,7 +2,7 @@
 
 #include "platform/NativeFileDialog.h"
 #include "platform/NativeFolderDialog.h"
-#include "services/HandbrakePreviewService.h"
+#include "services/FfmpegPreviewService.h"
 #include "services/TelegramController.h"
 #include "services/TelegramService.h"
 
@@ -136,7 +136,7 @@ QString sourcePathForPreview(const QFileInfo& fileInfo)
 AppController::AppController(QObject* parent)
     : QObject(parent)
     , m_fixes(new FfmpegBatchService(this))
-    , m_preview(new HandbrakePreviewService(this))
+    , m_preview(new FfmpegPreviewService(this))
     , m_telegram(new TelegramController(this))
 {
     m_thumbnailDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
@@ -154,12 +154,12 @@ AppController::AppController(QObject* parent)
     connect(m_fixes, &FfmpegBatchService::progress, this, &AppController::onFixProgress);
     connect(m_fixes, &FfmpegBatchService::finished, this, &AppController::onFixFinished);
 
-    connect(m_preview, &HandbrakePreviewService::log, this, &AppController::appendLog);
-    connect(m_preview, &HandbrakePreviewService::started, this, &AppController::onPreviewStarted);
-    connect(m_preview, &HandbrakePreviewService::fileStarted, this, &AppController::onPreviewFileStarted);
-    connect(m_preview, &HandbrakePreviewService::fileFinished, this, &AppController::onPreviewFileFinished);
-    connect(m_preview, &HandbrakePreviewService::progress, this, &AppController::onPreviewProgress);
-    connect(m_preview, &HandbrakePreviewService::finished, this, &AppController::onPreviewFinished);
+    connect(m_preview, &FfmpegPreviewService::log, this, &AppController::appendLog);
+    connect(m_preview, &FfmpegPreviewService::started, this, &AppController::onPreviewStarted);
+    connect(m_preview, &FfmpegPreviewService::fileStarted, this, &AppController::onPreviewFileStarted);
+    connect(m_preview, &FfmpegPreviewService::fileFinished, this, &AppController::onPreviewFileFinished);
+    connect(m_preview, &FfmpegPreviewService::progress, this, &AppController::onPreviewProgress);
+    connect(m_preview, &FfmpegPreviewService::finished, this, &AppController::onPreviewFinished);
 
     connect(m_telegram, &TelegramController::log, this, &AppController::appendLog);
     connect(m_telegram->service(), &TelegramService::fileSent, this, &AppController::onTelegramFileSent);

@@ -1,6 +1,6 @@
 #include "VideoFileModel.h"
 
-#include "services/HandbrakePreviewService.h"
+#include "services/FfmpegPreviewService.h"
 
 #include <QDir>
 #include <QFileInfo>
@@ -505,7 +505,7 @@ QString VideoFileModel::makeFixedPath(const QString& input)
 
 QString VideoFileModel::makePreviewPath(const QString& input)
 {
-    return HandbrakePreviewService::makeOutputPath(input);
+    return FfmpegPreviewService::makeOutputPath(input);
 }
 
 void VideoFileModel::updateDerivedPaths(int row)
