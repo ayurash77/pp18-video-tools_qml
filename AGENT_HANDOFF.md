@@ -235,14 +235,18 @@ PP18_VideoTools_macos-x64_v0.1.1.zip
 - Windows: looks for `win`/`windows`, prefers `x64`, `x86_64`, `amd64`, prefers `.zip`.
 - macOS: looks for `mac`, `macos`, `darwin`, `osx`, prefers `universal`, or matching `arm64`/`x64`, prefers `.dmg`, then `.zip`.
 
-## GitHub Actions Plan
+## GitHub Actions
 
-There are no local `.github/workflows` files yet.
+Local workflows now exist:
 
-Good next step on macOS:
+```text
+.github/workflows/ci.yml
+.github/workflows/release.yml
+```
 
-1. Add `.github/workflows/release.yml`.
-2. Trigger it on tags:
+`ci.yml` builds macOS arm64 and Windows x64 on pushes to `main`, pull requests, and manual runs.
+
+`release.yml` builds packages and publishes a GitHub Release when a `v*` tag is pushed:
 
 ```yaml
 on:
@@ -251,9 +255,12 @@ on:
       - "v*"
 ```
 
-3. Build Windows on `windows-latest`.
-4. Build macOS on a macOS runner.
-5. Upload platform packages as GitHub Release assets.
+It produces package assets named like:
+
+```text
+PP18_VideoTools_macos-arm64_v0.1.0.zip
+PP18_VideoTools_win-x64_v0.1.0.zip
+```
 
 This will allow development on macOS while GitHub Actions builds Windows packages automatically.
 
@@ -364,9 +371,9 @@ After pulling `origin/main`:
 
 ## Suggested Next Tasks
 
-1. Add GitHub Actions release workflow for Windows and macOS.
-2. Create the first GitHub Release `v0.1.0`.
-3. Attach:
+1. Push the workflow commit and verify the `CI` workflow on GitHub Actions.
+2. Create the first tag/release `v0.1.0`.
+3. Confirm that Actions attaches:
 
 ```text
 PP18_VideoTools_win-x64_v0.1.0.zip

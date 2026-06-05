@@ -1,6 +1,6 @@
-# PP18 Video Tools Qt
+# PP18 Video Tools QML
 
-Qt Widgets app for preparing PP18 video files, creating lightweight previews, and sending previews to Telegram.
+Qt 6 QML/C++ app for preparing PP18 video files, creating lightweight previews, comparing video versions, and sending previews to Telegram.
 
 ## Features
 
@@ -118,7 +118,27 @@ Set `QT_BASE`, `MINGW_BIN`, or `NINJA_EXE` if Qt is not installed in the default
 
 Required Qt modules:
 
-- `Widgets`
 - `Network`
 - `Multimedia`
-- `MultimediaWidgets`
+- `Qml`
+- `Quick`
+- `QuickControls2`
+
+## GitHub Actions
+
+The repository contains two workflows:
+
+- `.github/workflows/ci.yml`: builds macOS arm64 and Windows x64 on pushes to `main`, pull requests, and manual runs.
+- `.github/workflows/release.yml`: builds and publishes release assets when a `v*` tag is pushed.
+
+Release tags should match the CMake project version with a `v` prefix:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow produces:
+
+- `PP18_VideoTools_macos-arm64_<tag>.zip`
+- `PP18_VideoTools_win-x64_<tag>.zip`
