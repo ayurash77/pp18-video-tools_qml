@@ -5,6 +5,7 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QDebug>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -23,11 +24,22 @@ void applyLoggingRules()
 
 void applySystemDefaultFont(QGuiApplication& app)
 {
-    const int fontId = QFontDatabase::addApplicationFont(":/fonts/sf-regular");
+    // С новыми префиксами в resources.qrc пути стали короче
+    const QString fontPath = QStringLiteral(":/fonts/sf-regular");
+    const int fontId = QFontDatabase::addApplicationFont(fontPath);
+    if (fontId == -1) {
+        qWarning() << "Failed to load font from" << fontPath;
+    }
     const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
     QFont font(families.isEmpty() ? QString() : families.first());
     font.setPixelSize(13);
     app.setFont(font);
+
+    // Также загрузим остальные шрифты для надежности
+    QFontDatabase::addApplicationFont(":/fonts/titillium-regular");
+    QFontDatabase::addApplicationFont(":/fonts/titillium-semibold");
+    QFontDatabase::addApplicationFont(":/fonts/titillium-bold");
+    QFontDatabase::addApplicationFont(":/fonts/jetbrains");
 }
 
 }
@@ -53,7 +65,7 @@ int main(int argc, char* argv[])
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
         &app, []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
 
-    engine.load(QUrl(QStringLiteral("qrc:/qml/Main.qml")));
+    engine.loadFromModule("PP18.VideoTools", "Main");
 
     return app.exec();
 }

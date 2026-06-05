@@ -8,103 +8,41 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Для совместимости с тем, как пользователь может передавать путь к Qt
 foreach(qt_root_var IN ITEMS QT_ROOT QTDIR)
   if(DEFINED ENV{${qt_root_var}} AND EXISTS "$ENV{${qt_root_var}}/lib/cmake")
     list(APPEND CMAKE_PREFIX_PATH "$ENV{${qt_root_var}}/lib/cmake")
   endif()
 endforeach()
 
-set(PP18_QT_CMAKE_ROOT "")
-foreach(qt_cmake_path IN LISTS CMAKE_PREFIX_PATH)
-  if(EXISTS "${qt_cmake_path}/Qt6/Qt6Config.cmake")
-    set(PP18_QT_CMAKE_ROOT "${qt_cmake_path}")
-    break()
-  endif()
-endforeach()
-
-if(NOT PP18_QT_CMAKE_ROOT AND Qt6_DIR)
-  get_filename_component(PP18_QT_CMAKE_ROOT "${Qt6_DIR}/.." ABSOLUTE)
-endif()
-
-if(NOT Qt6_DIR)
-  set(QT_AUTODETECT_PATHS)
-  if(APPLE AND DEFINED ENV{HOME})
-    file(GLOB QT_AUTODETECT_PATHS LIST_DIRECTORIES true
-      "$ENV{HOME}/Development/Qt/*/macos/lib/cmake"
-      "$ENV{HOME}/Qt/*/macos/lib/cmake"
-    )
-  elseif(WIN32)
-    file(GLOB QT_AUTODETECT_PATHS LIST_DIRECTORIES true
-      "C:/Qt/*/mingw_64/lib/cmake"
-      "C:/Qt/*/msvc*/lib/cmake"
-    )
-  elseif(DEFINED ENV{HOME})
-    file(GLOB QT_AUTODETECT_PATHS LIST_DIRECTORIES true
-      "$ENV{HOME}/Qt/*/gcc_64/lib/cmake"
-      "$ENV{HOME}/Development/Qt/*/gcc_64/lib/cmake"
-    )
-  endif()
-
-  if(NOT PP18_QT_CMAKE_ROOT)
-    list(SORT QT_AUTODETECT_PATHS COMPARE NATURAL ORDER DESCENDING)
-    foreach(qt_path IN LISTS QT_AUTODETECT_PATHS)
-      if(EXISTS "${qt_path}/Qt6/Qt6Config.cmake")
-        set(PP18_QT_CMAKE_ROOT "${qt_path}")
-        break()
-      endif()
-    endforeach()
-  endif()
-
-endif()
-
-if(PP18_QT_CMAKE_ROOT)
-  list(PREPEND CMAKE_PREFIX_PATH "${PP18_QT_CMAKE_ROOT}")
-  list(REMOVE_DUPLICATES CMAKE_PREFIX_PATH)
-
-  get_cmake_property(PP18_CACHE_VARIABLES CACHE_VARIABLES)
-  foreach(cache_var IN LISTS PP18_CACHE_VARIABLES)
-    if(cache_var MATCHES "^Qt6.*_DIR$")
-      get_property(cache_value CACHE "${cache_var}" PROPERTY VALUE)
-      if(cache_value AND NOT cache_value MATCHES "-NOTFOUND$"
-          AND NOT cache_value MATCHES "^${PP18_QT_CMAKE_ROOT}(/|$)")
-        message(STATUS "Resetting stale Qt cache entry ${cache_var}: ${cache_value}")
-        unset(${cache_var} CACHE)
-      endif()
+# Помощь в поиске Vulkan на Windows (Qt 6 требует его для RHI)
+if(WIN32)
+  find_package(Vulkan QUIET)
+  if(NOT Vulkan_FOUND)
+    file(GLOB VULKAN_SDK_DIRS "C:/VulkanSDK/*")
+    if(VULKAN_SDK_DIRS)
+      list(SORT VULKAN_SDK_DIRS COMPARE NATURAL ORDER DESCENDING)
+      list(GET VULKAN_SDK_DIRS 0 LATEST_VULKAN_SDK)
+      set(Vulkan_INCLUDE_DIR "${LATEST_VULKAN_SDK}/Include" CACHE PATH "Path to Vulkan include directory")
+      find_package(Vulkan QUIET)
     endif()
-  endforeach()
-endif()
-
-if(NOT PP18_QT_CMAKE_ROOT AND NOT Qt6_DIR)
-  message(STATUS "Qt path not set. Pass -DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<kit>/lib/cmake or set QT_ROOT/QTDIR.")
-endif()
-
-if(NOT COMMAND _qt_internal_should_include_targets)
-  set(QT_PUBLIC_HELPERS_CANDIDATES)
-  if(Qt6_DIR)
-    list(APPEND QT_PUBLIC_HELPERS_CANDIDATES "${Qt6_DIR}/QtPublicCMakeHelpers.cmake")
   endif()
-  foreach(qt_cmake_path IN LISTS CMAKE_PREFIX_PATH)
-    list(APPEND QT_PUBLIC_HELPERS_CANDIDATES "${qt_cmake_path}/Qt6/QtPublicCMakeHelpers.cmake")
-  endforeach()
-
-  foreach(qt_public_helpers IN LISTS QT_PUBLIC_HELPERS_CANDIDATES)
-    if(EXISTS "${qt_public_helpers}")
-      include("${qt_public_helpers}")
-      break()
-    endif()
-  endforeach()
 endif()
 
+# Попытка подавить варнинг о Qt6TaskTree (может отсутствовать в некоторых установках Qt)
+find_package(Qt6 COMPONENTS TaskTree QUIET)
 find_package(Qt6 REQUIRED COMPONENTS Network Multimedia Qml Quick QuickControls2)
 
-add_executable(${PROJECT_NAME}
+qt_standard_project_setup()
+qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
+
+qt_add_executable(${PROJECT_NAME}
     src/main.cpp
     src/app/AppController.h
     src/app/AppController.cpp
     src/app/VideoFileModel.h
     src/app/VideoFileModel.cpp
-    src/qml/qml.qrc
-    src/qml/resources.qrc
     src/services/FfmpegBatchService.h
     src/services/FfmpegBatchService.cpp
     src/services/FfmpegPreviewService.h
@@ -115,6 +53,11 @@ add_executable(${PROJECT_NAME}
     src/services/TelegramService.cpp
     src/platform/NativeFileDialog.h
     src/platform/NativeFolderDialog.h
+)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    WIN32_EXECUTABLE TRUE
+    MACOSX_BUNDLE TRUE
 )
 
 if(APPLE)
@@ -129,6 +72,33 @@ else()
   )
 endif()
 
+qt_add_qml_module(${PROJECT_NAME}
+    URI PP18.VideoTools
+    VERSION 1.0
+    QML_FILES
+        src/qml/Main.qml
+        src/qml/AppFonts.qml
+        src/qml/AppStyle.qml
+        src/qml/LogWindow.qml
+        src/qml/SettingsWindow.qml
+        src/qml/PlayerWindow.qml
+        src/qml/components/PlayerButton.qml
+        src/qml/components/PlayerCombo.qml
+        src/qml/components/ToolbarButton.qml
+        src/qml/components/ToolbarSelect.qml
+        src/qml/components/ToolbarCheck.qml
+        src/qml/components/ActionToggle.qml
+        src/qml/components/ContextMenuItem.qml
+        src/qml/components/ContextMenuSeparator.qml
+        src/qml/components/TaskCard.qml
+        src/qml/components/TaskFixedSide.qml
+        src/qml/components/TaskSide.qml
+        src/qml/components/TaskSourceSide.qml
+        src/qml/components/TaskLine.qml
+    RESOURCES
+        src/resources.qrc
+)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
   Qt6::Network
   Qt6::Multimedia
@@ -139,99 +109,66 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/src")
 
-if(APPLE)
-  set_target_properties(${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE TRUE)
-endif()
-
-set(MAC_FFMPEG_CANDIDATES
-    "${CMAKE_SOURCE_DIR}/bin/ffmpeg"
-    "${CMAKE_SOURCE_DIR}/../pp18-video-tools_cli/bin/ffmpeg"
-)
-set(MAC_FFPROBE_CANDIDATES
-    "${CMAKE_SOURCE_DIR}/bin/ffprobe"
-    "${CMAKE_SOURCE_DIR}/../pp18-video-tools_cli/bin/ffprobe"
-)
-set(WIN_FFMPEG_CANDIDATES
-    "${CMAKE_SOURCE_DIR}/bin/ffmpeg.exe"
-    "${CMAKE_SOURCE_DIR}/../pp18-video-tools_cli/bin/ffmpeg.exe"
-)
-set(WIN_FFPROBE_CANDIDATES
-    "${CMAKE_SOURCE_DIR}/bin/ffprobe.exe"
-    "${CMAKE_SOURCE_DIR}/../pp18-video-tools_cli/bin/ffprobe.exe"
-)
-
-if(APPLE)
-  add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources/bin"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/src/assets"
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources/assets"
-    VERBATIM
-  )
-
-  foreach(src IN LISTS MAC_FFMPEG_CANDIDATES)
-    if(EXISTS "${src}")
-      add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${src}"
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources/bin/ffmpeg"
-        VERBATIM
-      )
-      break()
-    endif()
-  endforeach()
-
-  foreach(src IN LISTS MAC_FFPROBE_CANDIDATES)
-    if(EXISTS "${src}")
-      add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${src}"
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources/bin/ffprobe"
-        VERBATIM
-      )
-      break()
-    endif()
-  endforeach()
-endif()
-
-if(NOT APPLE)
-  add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_SOURCE_DIR}/src/assets"
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
-    VERBATIM
-  )
-endif()
-
+# Логика копирования ffmpeg и ассетов
+set(FFMPEG_NAME "ffmpeg")
+set(FFPROBE_NAME "ffprobe")
 if(WIN32)
-  add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory
-            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/bin"
+  set(FFMPEG_NAME "ffmpeg.exe")
+  set(FFPROBE_NAME "ffprobe.exe")
+endif()
+
+set(FFMPEG_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/bin/${FFMPEG_NAME}"
+    "${CMAKE_SOURCE_DIR}/../pp18-video-tools_cli/bin/${FFMPEG_NAME}"
+)
+set(FFPROBE_CANDIDATES
+    "${CMAKE_SOURCE_DIR}/bin/${FFPROBE_NAME}"
+    "${CMAKE_SOURCE_DIR}/../pp18-video-tools_cli/bin/${FFPROBE_NAME}"
+)
+
+set(BIN_DEST "$<TARGET_FILE_DIR:${PROJECT_NAME}>")
+if(APPLE)
+  set(BIN_DEST "$<TARGET_FILE_DIR:${PROJECT_NAME}>/../Resources")
+endif()
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${BIN_DEST}/bin"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_SOURCE_DIR}/src/assets" "${BIN_DEST}/assets"
     VERBATIM
-  )
+)
 
-  foreach(src IN LISTS WIN_FFMPEG_CANDIDATES)
-    if(EXISTS "${src}")
-      add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${src}"
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/bin/ffmpeg.exe"
-        VERBATIM
-      )
-      break()
-    endif()
-  endforeach()
+foreach(src IN LISTS FFMPEG_CANDIDATES)
+  if(EXISTS "${src}")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${src}" "${BIN_DEST}/bin/${FFMPEG_NAME}"
+      VERBATIM
+    )
+    break()
+  endif()
+endforeach()
 
-  foreach(src IN LISTS WIN_FFPROBE_CANDIDATES)
-    if(EXISTS "${src}")
-      add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${src}"
-                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/bin/ffprobe.exe"
-        VERBATIM
-      )
-      break()
+foreach(src IN LISTS FFPROBE_CANDIDATES)
+  if(EXISTS "${src}")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different "${src}" "${BIN_DEST}/bin/${FFPROBE_NAME}"
+      VERBATIM
+    )
+    break()
+  endif()
+endforeach()
+
+# Автоматический деплой на Windows в папку сборки
+if(WIN32)
+    # Находим windeployqt
+    get_target_property(_qt_bin_dir Qt6::Core LOCATION)
+    get_filename_component(_qt_bin_dir "${_qt_bin_dir}" DIRECTORY)
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${_qt_bin_dir}")
+
+    if(WINDEPLOYQT_EXECUTABLE)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}" --release --no-translations --qmldir "${CMAKE_SOURCE_DIR}/src" "$<TARGET_FILE:${PROJECT_NAME}>"
+            COMMENT "Deploying Qt dependencies to build directory..."
+            VERBATIM
+        )
     endif()
-  endforeach()
 endif()

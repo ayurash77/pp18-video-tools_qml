@@ -1,7 +1,14 @@
 @echo off
 setlocal
 
-where cmake >nul 2>nul || (echo ERROR: cmake not found in PATH & exit /b 1)
+where cmake >nul 2>nul || (
+  if exist "C:\Qt\Tools\CMake_64\bin\cmake.exe" (
+    set "PATH=C:\Qt\Tools\CMake_64\bin;%PATH%"
+  ) else (
+    echo ERROR: cmake not found in PATH
+    exit /b 1
+  )
+)
 
 if "%QT_BASE%"=="" (
   for /f "delims=" %%D in ('dir /b /ad /o-n "C:\Qt\*" 2^>nul') do (
@@ -39,7 +46,7 @@ if errorlevel 1 ( echo ERROR: Build failed & exit /b 1 )
 set "EXE=%BUILD_DIR%\PP18_VideoTools.exe"
 if not exist "%EXE%" ( echo ERROR: %EXE% not found after build. & exit /b 1 )
 
-"%WINDEPLOYQT%" --release --no-translations "%EXE%"
+"%WINDEPLOYQT%" --release --no-translations --qmldir src "%EXE%"
 
 echo.
 echo [OK] Build + deploy finished. See %BUILD_DIR%.
