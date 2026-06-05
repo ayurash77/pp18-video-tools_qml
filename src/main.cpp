@@ -24,22 +24,28 @@ void applyLoggingRules()
 
 void applySystemDefaultFont(QGuiApplication& app)
 {
-    // С новыми префиксами в resources.qrc пути стали короче
+#ifdef Q_OS_WIN
+    QFont font(QStringLiteral("Segoe UI"));
+    font.setPixelSize(13);
+    app.setFont(font);
+#else
     const QString fontPath = QStringLiteral(":/fonts/sf-regular");
     const int fontId = QFontDatabase::addApplicationFont(fontPath);
     if (fontId == -1) {
         qWarning() << "Failed to load font from" << fontPath;
     }
-    const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-    QFont font(families.isEmpty() ? QString() : families.first());
+    const QStringList families = fontId == -1 ? QStringList() : QFontDatabase::applicationFontFamilies(fontId);
+    QFont font(families.isEmpty() ? QStringLiteral("Arial") : families.first());
     font.setPixelSize(13);
     app.setFont(font);
 
-    // Также загрузим остальные шрифты для надежности
     QFontDatabase::addApplicationFont(":/fonts/titillium-regular");
     QFontDatabase::addApplicationFont(":/fonts/titillium-semibold");
     QFontDatabase::addApplicationFont(":/fonts/titillium-bold");
     QFontDatabase::addApplicationFont(":/fonts/jetbrains");
+    QFontDatabase::addApplicationFont(":/fonts/sf-semibold");
+    QFontDatabase::addApplicationFont(":/fonts/sf-bold");
+#endif
 }
 
 }

@@ -116,7 +116,11 @@ Window {
     function fileUrl(path) {
         if (!path)
             return ""
-        return "file://" + encodeURI(path).replace(/#/g, "%23")
+        if (typeof appController !== "undefined")
+            return appController.localFileUrl(path)
+        const normalized = String(path).replace(/\\/g, "/")
+        const prefix = /^[A-Za-z]:\//.test(normalized) ? "file:///" : "file://"
+        return prefix + encodeURI(normalized).replace(/#/g, "%23")
     }
 
     function playbackPath(path) {
@@ -138,6 +142,21 @@ Window {
 
     function playbackSourceMatches(player, path) {
         return String(player.source || "") === playbackUrl(path)
+    }
+
+    function reloadWhenCachedPlaybackReady() {
+        if (!visible || !cachePlaybackEnabled)
+            return
+
+        let shouldReload = activePath.length > 0
+            && isCachedPlayback(activePath)
+            && !playbackSourceMatches(currentPrimaryPlayer(), activePath)
+        if (splitEnabled && comparePath.length > 0) {
+            shouldReload = shouldReload
+                || (isCachedPlayback(comparePath) && !playbackSourceMatches(comparePlayer, comparePath))
+        }
+        if (shouldReload)
+            reloadPlaybackSources()
     }
 
     function reloadPlaybackSources() {
@@ -796,6 +815,13 @@ Window {
     onCachePlaybackEnabledChanged: {
         if (visible)
             reloadPlaybackSources()
+    }
+
+    Connections {
+        target: appController
+        function onMediaCacheChanged() {
+            reloadWhenCachedPlaybackReady()
+        }
     }
 
     Shortcut { sequence: "Space"; onActivated: togglePlayback() }

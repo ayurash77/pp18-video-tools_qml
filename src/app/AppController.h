@@ -113,6 +113,7 @@ public:
     Q_INVOKABLE void openSettingsWindow();
     Q_INVOKABLE void openLogWindow();
     Q_INVOKABLE void openPlayer(const QString& path, const QString& title = QString());
+    Q_INVOKABLE QString localFileUrl(const QString& path) const;
     Q_INVOKABLE QString cachedPlaybackPath(const QString& path) const;
     Q_INVOKABLE bool cachePreviewExists(const QString& path) const;
     Q_INVOKABLE void requestCachePreview(const QString& path);

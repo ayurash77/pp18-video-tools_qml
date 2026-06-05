@@ -92,6 +92,15 @@ Window {
         return true
     }
 
+    function addBlankRecipient() {
+        recipientsModel.append({
+            id: "recipient-" + Date.now(),
+            label: "",
+            chatId: "",
+            active: recipientsModel.count === 0
+        })
+    }
+
     function applyImportedRecipients(discovered, message) {
         importRunning = false
         let added = 0
@@ -422,12 +431,8 @@ Window {
                             Button {
                                 text: "Добавить"
                                 onClicked: {
-                                    recipientsModel.append({
-                                        id: "recipient-" + Date.now(),
-                                        label: "",
-                                        chatId: "",
-                                        active: recipientsModel.count === 0
-                                    })
+                                    if (!settingsWindow.addManualChatIdRecipient())
+                                        settingsWindow.addBlankRecipient()
                                 }
                             }
                         }
@@ -544,6 +549,7 @@ Window {
                     Button {
                         text: "Сохранить"
                         onClicked: {
+                            settingsWindow.addManualChatIdRecipient()
                             settingsWindow.saveRequested(tokenField.text, draftRecipients(), activeId(), cacheLimitDraftGb())
                             messageLabel.text = "Настройки сохранены"
                         }

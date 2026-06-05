@@ -34,8 +34,8 @@ ApplicationWindow {
     readonly property color accentColor: "#af8f5d"
     readonly property color warningColor: "#e0184f"
     readonly property string missingMeta: "---"
-    readonly property string monoFamily: appFonts.jetBrainsFamily.length > 0 ? appFonts.jetBrainsFamily : "Monospace"
-    readonly property string appFamily: appFonts.titilliumRegularFamily.length > 0 ? appFonts.titilliumRegularFamily : ""
+    readonly property string monoFamily: appFonts.monoFamily
+    readonly property string appFamily: appFonts.appFamily
 
     font.family: root.appFamily
 
@@ -127,6 +127,7 @@ ApplicationWindow {
             }
 
             ToolbarSelect {
+                fontFamily: root.appFamily
                 model: root.telegramRecipientLabels()
                 currentIndex: root.activeTelegramIndex()
                 controlWidth: AppStyle.toolbarSelectWidth
@@ -140,6 +141,7 @@ ApplicationWindow {
             }
 
             ToolbarCheck {
+                fontFamily: root.appFamily
                 labelText: "Удалять дублирующиеся кадры"
                 checked: appController.removeDupes
                 enabled: !appController.running
@@ -147,6 +149,7 @@ ApplicationWindow {
             }
 
             ToolbarSelect {
+                fontFamily: root.appFamily
                 model: ["Очень мягко", "Мягко", "Умеренно", "Агрессивно", "Максимально (есть риск)"]
                 currentIndex: appController.duplicateModeIndex
                 controlWidth: AppStyle.toolbarSelectWidth
@@ -156,6 +159,7 @@ ApplicationWindow {
             }
 
             ToolbarCheck {
+                fontFamily: root.appFamily
                 labelText: "Фиксировать 25 fps"
                 checked: appController.convertTo25Fps
                 enabled: !appController.running
@@ -163,6 +167,7 @@ ApplicationWindow {
             }
 
             ToolbarSelect {
+                fontFamily: root.appFamily
                 model: ["Пропускать существующие", "Перезаписывать существующие"]
                 currentIndex: appController.existingModeIndex
                 controlWidth: AppStyle.toolbarSelectWideWidth

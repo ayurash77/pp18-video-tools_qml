@@ -821,6 +821,13 @@ void AppController::openPlayer(const QString& path, const QString& title)
     setPlayerWindowOpen(true);
 }
 
+QString AppController::localFileUrl(const QString& path) const
+{
+    if (path.trimmed().isEmpty())
+        return QString();
+    return QUrl::fromLocalFile(QFileInfo(path).absoluteFilePath()).toString();
+}
+
 QString AppController::cachedPlaybackPath(const QString& path) const
 {
     const QString sourcePath = sourcePathForPreview(QFileInfo(path));
