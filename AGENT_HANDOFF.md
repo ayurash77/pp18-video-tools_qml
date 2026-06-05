@@ -244,6 +244,9 @@ Local workflows now exist:
 .github/workflows/release.yml
 ```
 
+GitHub Actions currently uses Qt `6.11.0` with the addon module `qtmultimedia`.
+Do not switch Actions to `6.11.1` unless `aqt`/Qt online repositories show that this version is available for both macOS and Windows.
+
 `ci.yml` builds macOS arm64 and Windows x64 on pushes to `main`, pull requests, and manual runs.
 
 `release.yml` builds packages and publishes a GitHub Release when a `v*` tag is pushed:

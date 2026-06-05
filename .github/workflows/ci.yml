@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  QT_VERSION: 6.11.1
+  QT_VERSION: 6.11.0
   APP_NAME: PP18_VideoTools
 
 jobs:
@@ -27,6 +27,7 @@ jobs:
           host: mac
           target: desktop
           arch: clang_64
+          modules: qtmultimedia
           cache: true
 
       - name: Configure
@@ -53,6 +54,7 @@ jobs:
           host: windows
           target: desktop
           arch: win64_msvc2022_64
+          modules: qtmultimedia
           cache: true
 
       - name: Configure
