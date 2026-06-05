@@ -30,7 +30,7 @@ Rectangle {
 
     property bool running: false
     property string missingMeta: "---"
-    property string appFamily: Qt.application.font.family
+    property string appFamily: ""
     property string monoFamily: "Monospace"
     property color panelColor: "#24273080"
     property color sideColor: "#292d37"

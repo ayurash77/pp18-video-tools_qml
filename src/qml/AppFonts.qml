@@ -16,14 +16,8 @@ QtObject {
     readonly property var sfSemibold: FontLoader { source: "qrc:/fonts/sf-semibold" }
     readonly property var sfBold: FontLoader { source: "qrc:/fonts/sf-bold" }
 
-    readonly property string titilliumRegularFamily: titilliumRegular.name === "Titillium Web"
-        ? "Titillium Web[RUS by Daymarius]"
-        : titilliumRegular.name
-    readonly property string titilliumSemiboldFamily: titilliumSemibold.name === "Titillium Web"
-        ? "Titillium Web[RUS by Daymarius]"
-        : titilliumSemibold.name
-    readonly property string titilliumBoldFamily: titilliumBold.name === "Titillium Web"
-        ? "Titillium Web[RUS by Daymarius]"
-        : titilliumBold.name
+    readonly property string titilliumRegularFamily: titilliumRegular.name
+    readonly property string titilliumSemiboldFamily: titilliumSemibold.name
+    readonly property string titilliumBoldFamily: titilliumBold.name
     readonly property string jetBrainsFamily: jetBrains.name
 }

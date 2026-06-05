@@ -40,6 +40,9 @@ class AppController : public QObject {
     Q_PROPERTY(QString playerPath READ playerPath NOTIFY playerChanged)
     Q_PROPERTY(QString playerTitle READ playerTitle NOTIFY playerChanged)
     Q_PROPERTY(QUrl playerSource READ playerSource NOTIFY playerChanged)
+    Q_PROPERTY(bool mediaCacheEnabled READ mediaCacheEnabled WRITE setMediaCacheEnabled NOTIFY mediaCacheChanged)
+    Q_PROPERTY(bool mediaCacheRunning READ mediaCacheRunning NOTIFY mediaCacheChanged)
+    Q_PROPERTY(bool mediaCacheComplete READ mediaCacheComplete NOTIFY mediaCacheChanged)
     Q_PROPERTY(QString telegramBotToken READ telegramBotToken NOTIFY telegramSettingsChanged)
     Q_PROPERTY(QString telegramChatId READ telegramChatId NOTIFY telegramSettingsChanged)
     Q_PROPERTY(QVariantList telegramRecipients READ telegramRecipients NOTIFY telegramSettingsChanged)
@@ -77,6 +80,10 @@ public:
     QString playerPath() const;
     QString playerTitle() const;
     QUrl playerSource() const;
+    bool mediaCacheEnabled() const;
+    void setMediaCacheEnabled(bool enabled);
+    bool mediaCacheRunning() const;
+    bool mediaCacheComplete() const;
     QString telegramBotToken() const;
     QString telegramChatId() const;
     QVariantList telegramRecipients() const;
@@ -98,10 +105,13 @@ public:
     Q_INVOKABLE void openSettingsWindow();
     Q_INVOKABLE void openLogWindow();
     Q_INVOKABLE void openPlayer(const QString& path, const QString& title = QString());
+    Q_INVOKABLE QString cachedPlaybackPath(const QString& path) const;
+    Q_INVOKABLE bool cachePreviewExists(const QString& path) const;
+    Q_INVOKABLE void requestCachePreview(const QString& path);
     Q_INVOKABLE void saveTelegramSettings(const QString& botToken, const QVariantList& recipients, const QString& activeRecipientId);
     Q_INVOKABLE void importTelegramRecipients(const QString& botToken);
     Q_INVOKABLE void setActiveTelegramRecipient(const QString& recipientId);
-    Q_INVOKABLE QVariantList versionedSiblingFiles(const QString& path) const;
+    Q_INVOKABLE QVariantList versionedSiblingFiles(const QString& path);
 
 signals:
     void logTextChanged();
@@ -118,6 +128,7 @@ signals:
     void logWindowOpenChanged();
     void playerWindowOpenChanged();
     void playerChanged();
+    void mediaCacheChanged();
     void telegramSettingsChanged();
     void telegramRecipientsImported(const QVariantList& recipients, const QString& message);
     void telegramRecipientsImportFailed(const QString& message);
@@ -136,12 +147,18 @@ private slots:
     void onTelegramFileSent(const QString& filePath, bool ok, const QString& details);
     void onMetadataFinished(int exitCode, QProcess::ExitStatus status);
     void onThumbnailFinished(int exitCode, QProcess::ExitStatus status);
+    void onCachePreviewFinished(int exitCode, QProcess::ExitStatus status);
 
 private:
     struct ThumbnailJob {
         QString input;
         int row = -1;
         bool fixed = false;
+    };
+
+    struct CachePreviewJob {
+        QString input;
+        QString output;
     };
 
     enum class TaskSideScope {
@@ -173,6 +190,13 @@ private:
     void queueFixedThumbnail(int row);
     void startNextThumbnail();
     void stopThumbnailGeneration();
+    QString appCacheRoot() const;
+    QString cachePreviewPath(const QString& path) const;
+    QString cacheKeyForPath(const QString& path) const;
+    void queueCachePreviews(const QStringList& files);
+    void startNextCachePreview();
+    void stopCachePreviewGeneration();
+    void updateMediaCacheComplete();
     void loadTelegramRecipients();
     void persistTelegramRecipients();
     QString activeTelegramChatId() const;
@@ -207,6 +231,11 @@ private:
     QVector<ThumbnailJob> m_thumbnailQueue;
     QString m_thumbnailDir;
     QProcess* m_thumbnailProcess = nullptr;
+    QString m_cachePreviewDir;
+    QVector<CachePreviewJob> m_cachePreviewQueue;
+    QProcess* m_cachePreviewProcess = nullptr;
+    bool m_mediaCacheEnabled = false;
+    bool m_mediaCacheComplete = false;
     bool m_settingsWindowOpen = false;
     bool m_logWindowOpen = false;
     bool m_playerWindowOpen = false;

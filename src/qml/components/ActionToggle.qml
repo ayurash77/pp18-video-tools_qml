@@ -9,7 +9,7 @@ Rectangle {
     property string label: ""
     property string glyph: ""
     property string iconSource: ""
-    property string fontFamily: Qt.application.font.family
+    property string fontFamily: ""
     property color tone: "#08aeea"
     property color mutedColor: "#8d95aa"
     property color hoverFill: "#38404d"

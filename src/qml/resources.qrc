@@ -13,6 +13,9 @@
         <file alias="funnel">../assets/icons/funnel.svg</file>
         <file alias="generic_file">../assets/icons/generic_file.svg</file>
         <file alias="logs">../assets/icons/logs.svg</file>
+        <file alias="monitor-check">../assets/icons/monitor-check.svg</file>
+        <file alias="monitor-down">../assets/icons/monitor-down.svg</file>
+        <file alias="monitor-pause">../assets/icons/monitor-pause.svg</file>
         <file alias="play">../assets/icons/play.svg</file>
         <file alias="refresh-cw">../assets/icons/refresh-cw.svg</file>
         <file alias="send">../assets/icons/send.svg</file>

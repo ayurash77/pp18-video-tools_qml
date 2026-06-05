@@ -35,7 +35,7 @@ ApplicationWindow {
     readonly property color warningColor: "#e0184f"
     readonly property string missingMeta: "---"
     readonly property string monoFamily: appFonts.jetBrainsFamily.length > 0 ? appFonts.jetBrainsFamily : "Monospace"
-    readonly property string appFamily: appFonts.titilliumRegularFamily.length > 0 ? appFonts.titilliumRegularFamily : Qt.application.font.family
+    readonly property string appFamily: appFonts.titilliumRegularFamily.length > 0 ? appFonts.titilliumRegularFamily : ""
 
     font.family: root.appFamily
 
@@ -173,6 +173,20 @@ ApplicationWindow {
 
             Item {
                 Layout.fillWidth: true
+            }
+
+            ToolbarButton {
+                variant: "icon"
+                color: appController.mediaCacheEnabled ? "success" : "secondary"
+                icon: appController.mediaCacheRunning
+                      ? "qrc:/icons/monitor-pause"
+                      : appController.mediaCacheEnabled && appController.mediaCacheComplete
+                        ? "qrc:/icons/monitor-check"
+                        : "qrc:/icons/monitor-down"
+                label: appController.mediaCacheEnabled ? "Отключить кеширование" : "Включить кеширование"
+                active: appController.mediaCacheEnabled
+                enabled: appController.files.count > 0 && !appController.running
+                onClicked: appController.mediaCacheEnabled = !appController.mediaCacheEnabled
             }
 
             ToolbarButton {
@@ -542,6 +556,7 @@ ApplicationWindow {
         playerTitle: appController.playerTitle
         appFamily: root.appFamily
         monoFamily: root.monoFamily
+        cachePlaybackEnabled: appController.mediaCacheEnabled
         onRequestVersions: function(path) {
             qmlPlayerWindow.versions = appController.versionedSiblingFiles(path)
         }

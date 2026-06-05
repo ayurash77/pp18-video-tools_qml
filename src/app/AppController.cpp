@@ -12,6 +12,7 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QDirIterator>
+#include <QFile>
 #include <QFileInfo>
 #include <QMap>
 #include <QProcess>
@@ -139,11 +140,10 @@ AppController::AppController(QObject* parent)
     , m_preview(new FfmpegPreviewService(this))
     , m_telegram(new TelegramController(this))
 {
-    m_thumbnailDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-    if (m_thumbnailDir.isEmpty())
-        m_thumbnailDir = QDir::tempPath() + "/PP18_VideoTools";
-    m_thumbnailDir = QDir(m_thumbnailDir).absoluteFilePath("thumbnails");
+    m_thumbnailDir = QDir(appCacheRoot()).absoluteFilePath("Thumbnails");
+    m_cachePreviewDir = QDir(appCacheRoot()).absoluteFilePath("Previews");
     QDir().mkpath(m_thumbnailDir);
+    QDir().mkpath(m_cachePreviewDir);
 
     setStatusText("Готово");
 
@@ -348,6 +348,36 @@ QString AppController::playerTitle() const
 QUrl AppController::playerSource() const
 {
     return m_playerPath.isEmpty() ? QUrl() : QUrl::fromLocalFile(m_playerPath);
+}
+
+bool AppController::mediaCacheEnabled() const
+{
+    return m_mediaCacheEnabled;
+}
+
+void AppController::setMediaCacheEnabled(bool enabled)
+{
+    if (m_mediaCacheEnabled == enabled)
+        return;
+
+    m_mediaCacheEnabled = enabled;
+    if (m_mediaCacheEnabled) {
+        queueCachePreviews(filteredDisplayFiles(m_allSourcePaths));
+    } else {
+        stopCachePreviewGeneration();
+        updateMediaCacheComplete();
+    }
+    emit mediaCacheChanged();
+}
+
+bool AppController::mediaCacheRunning() const
+{
+    return m_cachePreviewProcess != nullptr || !m_cachePreviewQueue.isEmpty();
+}
+
+bool AppController::mediaCacheComplete() const
+{
+    return m_mediaCacheComplete;
 }
 
 QString AppController::telegramBotToken() const
@@ -602,8 +632,10 @@ void AppController::clearFiles()
 {
     stopMetadataLoading();
     stopThumbnailGeneration();
+    stopCachePreviewGeneration();
     m_allSourcePaths.clear();
     m_files.clear();
+    updateMediaCacheComplete();
     setStatusText("Список очищен");
     appendLog("Список файлов очищен.");
 }
@@ -613,6 +645,7 @@ void AppController::removeFile(int row)
     const QString file = m_files.fileAt(row);
     m_allSourcePaths.removeAll(file);
     m_files.removeAt(row);
+    updateMediaCacheComplete();
     setStatusText(QString("Файлов в списке: %1").arg(m_files.count()));
 }
 
@@ -703,9 +736,30 @@ void AppController::openPlayer(const QString& path, const QString& title)
     const QString sourcePath = sourcePathForPreview(fileInfo);
     const QFileInfo sourceInfo(sourcePath);
     m_playerPath = sourceInfo.exists() ? sourceInfo.absoluteFilePath() : fileInfo.absoluteFilePath();
+    if (m_mediaCacheEnabled)
+        queueCachePreviews({m_playerPath});
     m_playerTitle = title.isEmpty() ? QFileInfo(m_playerPath).fileName() : title;
     emit playerChanged();
     setPlayerWindowOpen(true);
+}
+
+QString AppController::cachedPlaybackPath(const QString& path) const
+{
+    const QString sourcePath = sourcePathForPreview(QFileInfo(path));
+    const QString previewPath = cachePreviewPath(sourcePath);
+    return QFileInfo::exists(previewPath) ? previewPath : QFileInfo(sourcePath).absoluteFilePath();
+}
+
+bool AppController::cachePreviewExists(const QString& path) const
+{
+    return QFileInfo::exists(cachePreviewPath(sourcePathForPreview(QFileInfo(path))));
+}
+
+void AppController::requestCachePreview(const QString& path)
+{
+    if (path.trimmed().isEmpty())
+        return;
+    queueCachePreviews({path});
 }
 
 void AppController::saveTelegramSettings(const QString& botToken, const QVariantList& recipients, const QString& activeRecipientId)
@@ -746,7 +800,7 @@ void AppController::setActiveTelegramRecipient(const QString& recipientId)
     }
 }
 
-QVariantList AppController::versionedSiblingFiles(const QString& path) const
+QVariantList AppController::versionedSiblingFiles(const QString& path)
 {
     QVariantList result;
     const QFileInfo fileInfo(sourcePathForPreview(QFileInfo(path)));
@@ -774,8 +828,13 @@ QVariantList AppController::versionedSiblingFiles(const QString& path) const
     std::sort(versions.begin(), versions.end(), [](const QVariantMap& left, const QVariantMap& right) {
         return left.value("version").toInt() > right.value("version").toInt();
     });
-    for (const QVariantMap& item : std::as_const(versions))
+    QStringList versionPaths;
+    for (const QVariantMap& item : std::as_const(versions)) {
         result << item;
+        versionPaths << item.value("path").toString();
+    }
+    if (m_mediaCacheEnabled)
+        queueCachePreviews(versionPaths);
     return result;
 }
 
@@ -912,6 +971,10 @@ void AppController::reloadDisplayedFiles()
     queueMetadata(displayFiles);
     queueSourceThumbnails(displayFiles);
     queueFixedThumbnails();
+    if (m_mediaCacheEnabled)
+        queueCachePreviews(displayFiles);
+    else
+        updateMediaCacheComplete();
     setStatusText(QString("Файлов в списке: %1").arg(m_files.count()));
     emit actionSummaryChanged();
 }
@@ -1272,6 +1335,138 @@ void AppController::stopThumbnailGeneration()
     m_thumbnailProcess = nullptr;
 }
 
+QString AppController::appCacheRoot() const
+{
+    const QString home = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+    const QString root = home.isEmpty()
+        ? QDir(QDir::tempPath()).absoluteFilePath("PP18_VideoTools/Cache")
+        : QDir(home).absoluteFilePath("PP18_VideoTools/Cache");
+    QDir().mkpath(root);
+    return root;
+}
+
+QString AppController::cacheKeyForPath(const QString& path) const
+{
+    const QFileInfo fileInfo(path);
+    const QByteArray hashInput = (fileInfo.absoluteFilePath()
+        + fileInfo.lastModified().toString(Qt::ISODateWithMs)).toUtf8();
+    return QString::fromLatin1(QCryptographicHash::hash(hashInput, QCryptographicHash::Md5).toHex());
+}
+
+QString AppController::cachePreviewPath(const QString& path) const
+{
+    if (path.trimmed().isEmpty())
+        return QString();
+    return QDir(m_cachePreviewDir).absoluteFilePath(cacheKeyForPath(path) + ".mp4");
+}
+
+void AppController::queueCachePreviews(const QStringList& files)
+{
+    if (!m_mediaCacheEnabled)
+        return;
+
+    QDir().mkpath(m_cachePreviewDir);
+    QSet<QString> queuedOutputs;
+    for (const CachePreviewJob& job : std::as_const(m_cachePreviewQueue))
+        queuedOutputs.insert(job.output);
+    if (m_cachePreviewProcess)
+        queuedOutputs.insert(m_cachePreviewProcess->property("cache_output").toString());
+
+    bool added = false;
+    for (const QString& file : files) {
+        const QString input = sourcePathForPreview(QFileInfo(file));
+        const QFileInfo inputInfo(input);
+        if (!inputInfo.exists() || !inputInfo.isFile())
+            continue;
+
+        const QString output = cachePreviewPath(inputInfo.absoluteFilePath());
+        if (QFileInfo::exists(output) || queuedOutputs.contains(output))
+            continue;
+
+        m_cachePreviewQueue.append({inputInfo.absoluteFilePath(), output});
+        queuedOutputs.insert(output);
+        added = true;
+    }
+
+    if (added) {
+        m_mediaCacheComplete = false;
+        emit mediaCacheChanged();
+    }
+    startNextCachePreview();
+    updateMediaCacheComplete();
+}
+
+void AppController::startNextCachePreview()
+{
+    if (!m_mediaCacheEnabled || m_cachePreviewProcess || m_cachePreviewQueue.isEmpty())
+        return;
+
+    const CachePreviewJob job = m_cachePreviewQueue.takeFirst();
+    if (!QFileInfo::exists(job.input)) {
+        startNextCachePreview();
+        return;
+    }
+
+    auto* process = new QProcess(this);
+    process->setProperty("cache_input", job.input);
+    process->setProperty("cache_output", job.output);
+    process->setProcessChannelMode(QProcess::MergedChannels);
+    connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, &AppController::onCachePreviewFinished);
+    m_cachePreviewProcess = process;
+    emit mediaCacheChanged();
+
+    appendLog("Cache preview: " + QDir::toNativeSeparators(job.input));
+    process->start(findMediaTool("ffmpeg"), {
+        "-y",
+        "-i", job.input,
+        "-map", "0:v:0",
+        "-map", "0:a?",
+        "-vf", "scale='if(gte(iw,ih),min(1280,iw),-2)':'if(gt(ih,iw),min(1280,ih),-2)'",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "22",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-movflags", "+faststart",
+        job.output
+    });
+}
+
+void AppController::stopCachePreviewGeneration()
+{
+    m_cachePreviewQueue.clear();
+    if (!m_cachePreviewProcess)
+        return;
+
+    m_cachePreviewProcess->kill();
+    m_cachePreviewProcess->deleteLater();
+    m_cachePreviewProcess = nullptr;
+}
+
+void AppController::updateMediaCacheComplete()
+{
+    bool complete = m_mediaCacheEnabled && !mediaCacheRunning();
+    if (complete) {
+        const QStringList displayFiles = filteredDisplayFiles(m_allSourcePaths);
+        if (displayFiles.isEmpty())
+            complete = false;
+        for (const QString& file : displayFiles) {
+            const QString input = sourcePathForPreview(QFileInfo(file));
+            if (!QFileInfo::exists(cachePreviewPath(input))) {
+                complete = false;
+                break;
+            }
+        }
+    }
+
+    if (m_mediaCacheComplete == complete)
+        return;
+    m_mediaCacheComplete = complete;
+    emit mediaCacheChanged();
+}
+
 void AppController::loadTelegramRecipients()
 {
     QSettings settings;
@@ -1501,4 +1696,31 @@ void AppController::onThumbnailFinished(int exitCode, QProcess::ExitStatus statu
     process->deleteLater();
     m_thumbnailProcess = nullptr;
     startNextThumbnail();
+}
+
+void AppController::onCachePreviewFinished(int exitCode, QProcess::ExitStatus status)
+{
+    auto* process = qobject_cast<QProcess*>(sender());
+    if (!process || process != m_cachePreviewProcess)
+        return;
+
+    const QString input = process->property("cache_input").toString();
+    const QString output = process->property("cache_output").toString();
+    const QString details = QString::fromUtf8(process->readAllStandardOutput()).trimmed();
+    const bool ok = exitCode == 0 && status == QProcess::NormalExit && QFileInfo::exists(output);
+
+    if (ok) {
+        appendLog("Cache preview готов: " + QDir::toNativeSeparators(output));
+    } else {
+        QFile::remove(output);
+        appendLog("Ошибка cache preview: " + QDir::toNativeSeparators(input));
+        if (!details.isEmpty())
+            appendLog(details.right(600));
+    }
+
+    process->deleteLater();
+    m_cachePreviewProcess = nullptr;
+    emit mediaCacheChanged();
+    startNextCachePreview();
+    updateMediaCacheComplete();
 }

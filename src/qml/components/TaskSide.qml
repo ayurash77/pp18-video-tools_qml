@@ -1,6 +1,9 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import QtQuick.Layouts
+
+pragma ComponentBehavior: Bound
 
 Rectangle {
     id: taskSide
@@ -38,7 +41,7 @@ Rectangle {
     property color fixesColor: "#43bf83"
     property color previewColor: "#08aeea"
     property color telegramColor: "#2f6cf2"
-    property string appFamily: Qt.application.font.family
+    property string appFamily: ""
     property string monoFamily: "Monospace"
 
     signal play()
@@ -70,64 +73,86 @@ Rectangle {
         anchors.bottomMargin: 3
         spacing: 8
 
-        ColumnLayout {
+        Item {
             Layout.preferredWidth: 30
             Layout.fillHeight: true
-            spacing: 6
 
-            Item {
-                Layout.fillHeight: true
-            }
+            Column {
+                anchors.centerIn: parent
+                spacing: taskSide.showFixes ? 4 : 6
 
-            ActionToggle {
-                visible: taskSide.showFixes
-                active: taskSide.fixesActive
-                enabled: taskSide.controlsEnabled
-                iconSource: "qrc:/icons/bug-off"
-                label: "Fixes"
-                tone: taskSide.fixesColor
-                onClicked: taskSide.toggleFixes()
-            }
+                ActionToggle {
+                    visible: taskSide.showFixes
+                    active: taskSide.fixesActive
+                    enabled: taskSide.controlsEnabled
+                    iconSource: "qrc:/icons/bug-off"
+                    label: "Fixes"
+                    tone: taskSide.fixesColor
+                    onClicked: taskSide.toggleFixes()
+                }
 
-            ActionToggle {
-                active: taskSide.previewActive
-                enabled: taskSide.controlsEnabled
-                iconSource: "qrc:/icons/eye"
-                label: "Preview"
-                tone: taskSide.previewColor
-                onClicked: taskSide.togglePreview()
-            }
+                ActionToggle {
+                    active: taskSide.previewActive
+                    enabled: taskSide.controlsEnabled
+                    iconSource: "qrc:/icons/eye"
+                    label: "Preview"
+                    tone: taskSide.previewColor
+                    onClicked: taskSide.togglePreview()
+                }
 
-            ActionToggle {
-                active: taskSide.telegramActive
-                enabled: taskSide.controlsEnabled
-                iconSource: "qrc:/icons/send"
-                label: "Telegram"
-                tone: taskSide.telegramColor
-                onClicked: taskSide.toggleTelegram()
-            }
-
-            Item {
-                Layout.fillHeight: true
+                ActionToggle {
+                    active: taskSide.telegramActive
+                    enabled: taskSide.controlsEnabled
+                    iconSource: "qrc:/icons/send"
+                    label: "Telegram"
+                    tone: taskSide.telegramColor
+                    onClicked: taskSide.toggleTelegram()
+                }
             }
         }
 
         Rectangle {
+            id: thumbnailFrame
             Layout.preferredWidth: 110
             Layout.preferredHeight: 64
             Layout.alignment: Qt.AlignVCenter
             radius: 6
             color: taskSide.thumbnailColor
-            border.color: taskSide.borderColor
-            clip: true
 
-            Image {
+            Rectangle {
+                id: thumbnailMask
+                anchors.fill: thumbnailContent
+                radius: thumbnailFrame.radius
+                visible: false
+                color: "white"
+                layer.enabled: true
+                antialiasing: true
+            }
+
+            Item {
+                id: thumbnailContent
+                property Item maskItem: thumbnailMask
+
                 anchors.fill: parent
-                source: taskSide.thumbUrl
+                anchors.margins: 0.5
                 visible: taskSide.thumbUrl.length > 0
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                cache: true
+                layer.enabled: true
+                layer.smooth: true
+                layer.samples: 4
+                layer.effect: MultiEffect {
+                    maskEnabled: true
+                    maskSource: thumbnailContent.maskItem
+                }
+
+                Image {
+                    anchors.fill: parent
+                    source: taskSide.thumbUrl
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    cache: true
+                    smooth: true
+                    mipmap: true
+                }
             }
 
             Rectangle {
@@ -147,6 +172,16 @@ Rectangle {
                     font.pixelSize: 12
                     font.bold: true
                 }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: thumbnailFrame.radius
+                color: "transparent"
+                border.color: Qt.lighter(taskSide.borderColor, 1.18)
+                border.width: 1
+                border.pixelAligned: false
+                antialiasing: true
             }
         }
 

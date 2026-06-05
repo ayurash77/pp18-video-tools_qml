@@ -5,7 +5,7 @@ import ".."
 MenuItem {
     id: control
 
-    property string fontFamily: Qt.application.font.family
+    property string fontFamily: ""
     property color textColor: "#c0cfe7"
     property color dimColor: "#56627a"
     property color highlightColor: "#146ecc"

@@ -12,7 +12,7 @@ Control {
     property string label: ""
     property string icon: ""
     property string iconSource: ""
-    property string fontFamily: Qt.application.font.family
+    property string fontFamily: ""
     property bool active: false
     property bool danger: false
 

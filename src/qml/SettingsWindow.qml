@@ -15,7 +15,7 @@ Window {
     property string chatId: ""
     property var recipients: []
     property string activeRecipientId: ""
-    property string appFamily: "Sans Serif"
+    property string appFamily: ""
     property string monoFamily: "Monospace"
     property bool importRunning: false
     signal saveRequested(string botToken, var recipients, string activeRecipientId)

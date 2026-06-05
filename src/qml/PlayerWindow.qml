@@ -15,7 +15,7 @@ Window {
 
     property string initialPath: ""
     property string playerTitle: ""
-    property string appFamily: "Sans Serif"
+    property string appFamily: ""
     property string monoFamily: "Monospace"
     property var versions: []
     property string activePath: initialPath
@@ -26,6 +26,7 @@ Window {
     property string zoomMode: "fit"
     property bool infoVisible: false
     property bool versionsVisible: true
+    property bool cachePlaybackEnabled: true
     property bool splitEnabled: false
     property real splitPercent: 50
     property real splitHandleYPercent: 50
@@ -111,6 +112,27 @@ Window {
         if (!path)
             return ""
         return "file://" + encodeURI(path).replace(/#/g, "%23")
+    }
+
+    function playbackPath(path) {
+        if (cachePlaybackEnabled && typeof appController !== "undefined")
+            return appController.cachedPlaybackPath(path)
+        return path
+    }
+
+    function playbackUrl(path) {
+        return fileUrl(playbackPath(path))
+    }
+
+    function playbackSourceMatches(player, path) {
+        return String(player.source || "") === playbackUrl(path)
+    }
+
+    function reloadPlaybackSources() {
+        if (activePath.length > 0)
+            setActivePath(activePath, false)
+        if (splitEnabled && comparePath.length > 0)
+            setComparePath(comparePath)
     }
 
     function mediaReady(status) {
@@ -428,7 +450,8 @@ Window {
 
     function setActivePath(path, resetVersions) {
         const currentPlayer = currentPrimaryPlayer()
-        if (samePath(path, activePath) && currentPlayer.source.toString().length > 0) {
+        if (samePath(path, activePath) && currentPlayer.source.toString().length > 0
+                && playbackSourceMatches(currentPlayer, path)) {
             if (resetVersions)
                 requestVersions(path)
             return
@@ -448,7 +471,7 @@ Window {
         activePath = path
         const targetPlayer = hasCurrentSource ? standbyPrimaryPlayer() : currentPlayer
         targetPlayer.stop()
-        targetPlayer.source = fileUrl(path)
+        targetPlayer.source = playbackUrl(path)
         if (!splitEnabled)
             comparePath = ""
         if (resetVersions)
@@ -456,7 +479,8 @@ Window {
     }
 
     function setComparePath(path) {
-        if (samePath(path, comparePath) && comparePlayer.source.toString().length > 0)
+        if (samePath(path, comparePath) && comparePlayer.source.toString().length > 0
+                && playbackSourceMatches(comparePlayer, path))
             return
 
         pauseCompareAfterDecode.stop()
@@ -467,7 +491,7 @@ Window {
         pendingCompareRestore = true
         compareSwitchingSource = true
         comparePath = path
-        comparePlayer.source = fileUrl(path)
+        comparePlayer.source = playbackUrl(path)
     }
 
     function hideVersionsAbove(index) {
@@ -757,6 +781,10 @@ Window {
     }
 
     onVersionsChanged: applyInitialVersionVisibility()
+    onCachePlaybackEnabledChanged: {
+        if (visible)
+            reloadPlaybackSources()
+    }
 
     Shortcut { sequence: "Space"; onActivated: togglePlayback() }
     Shortcut { sequence: "Left"; onActivated: stepFrame(-1) }
@@ -1362,6 +1390,26 @@ Window {
                                 checked: versionsVisible
                                 buttonWidth: 82
                                 onClicked: versionsVisible = checked
+                            }
+                            PlayerButton {
+                                iconSource: !cachePlaybackEnabled
+                                            ? "qrc:/icons/monitor-down"
+                                            : appController.cachePreviewExists(activePath)
+                                              ? "qrc:/icons/monitor-check"
+                                              : "qrc:/icons/monitor-pause"
+                                checkable: true
+                                checked: cachePlaybackEnabled
+                                buttonWidth: 34
+                                onClicked: {
+                                    cachePlaybackEnabled = checked
+                                    if (checked) {
+                                        if (!appController.mediaCacheEnabled)
+                                            appController.mediaCacheEnabled = true
+                                        appController.requestCachePreview(activePath)
+                                        if (splitEnabled)
+                                            appController.requestCachePreview(comparePath)
+                                    }
+                                }
                             }
 
                             Item { Layout.fillWidth: true }

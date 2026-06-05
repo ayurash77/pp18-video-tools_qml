@@ -9,7 +9,7 @@ Item {
     property bool exists: true
     property color tone: "#d9deea"
     property color mutedColor: "#8d95aa"
-    property string fontFamily: Qt.application.font.family
+    property string fontFamily: ""
     property string monoFamily: "Monospace"
     property string res: ""
     property string frames: ""

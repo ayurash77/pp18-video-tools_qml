@@ -21,20 +21,15 @@ void applyLoggingRules()
     qputenv("QT_LOGGING_RULES", rules);
 }
 
-void applyDefaultFont(QGuiApplication& app)
+void applySystemDefaultFont(QGuiApplication& app)
 {
-    const int fontId = QFontDatabase::addApplicationFont(":/fonts/titillium-regular");
+    const int fontId = QFontDatabase::addApplicationFont(":/fonts/sf-regular");
     const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-    if (families.isEmpty())
-        return;
-
-    const QString family = families.first() == QStringLiteral("Titillium Web")
-        ? QStringLiteral("Titillium Web[RUS by Daymarius]")
-        : families.first();
-    QFont font(family);
+    QFont font(families.isEmpty() ? QString() : families.first());
     font.setPixelSize(13);
     app.setFont(font);
 }
+
 }
 
 int main(int argc, char* argv[])
@@ -49,7 +44,7 @@ int main(int argc, char* argv[])
     QCoreApplication::setApplicationVersion(QT_VERSION_STR);
 
     QQuickStyle::setStyle("Fusion");
-    applyDefaultFont(app);
+    applySystemDefaultFont(app);
 
     AppController controller;
     QQmlApplicationEngine engine;

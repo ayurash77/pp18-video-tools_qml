@@ -5,7 +5,7 @@ CheckBox {
     id: control
 
     property string labelText: ""
-    property string fontFamily: Qt.application.font.family
+    property string fontFamily: ""
     property color textColor: "#d9deea"
     property color dimColor: "#687086"
     property color inputColor: "#20232c"

@@ -10,7 +10,7 @@ ComboBox {
 
     property int controlWidth: AppStyle.toolbarSelectWidth
     property string label: ""
-    property string fontFamily: Qt.application.font.family
+    property string fontFamily: ""
     property color textColor: "#c0cfe7"
     property color dimColor: "#56627a"
     property color mutedColor: "#9aa8c1"

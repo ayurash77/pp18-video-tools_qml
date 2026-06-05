@@ -8,7 +8,7 @@ Button {
 
     property int buttonWidth: 30
     property bool pill: true
-    property string fontFamily: Qt.application.font.family
+    property string fontFamily: ""
     property string iconSource: ""
 
     Layout.preferredWidth: buttonWidth
