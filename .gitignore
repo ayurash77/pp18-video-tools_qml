@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# IDE / local project state
+.idea/
+.junie/
+.qtcreator/
+*.user
+
+# CMake / Qt build outputs
+build*/
+cmake-build-*/
+release/
+out/
+*.app/
+
+# Local agent handoff notes
+AGENT_HANDOFF.md

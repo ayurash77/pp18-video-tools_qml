@@ -1,0 +1,33 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="arr-down">../assets/icons/arr-down.svg</file>
+        <file alias="arr-right">../assets/icons/arr-right.svg</file>
+        <file alias="arr-up-down">../assets/icons/arr-up-down.svg</file>
+        <file alias="arrow-left-up">../assets/icons/arrow-left-up.svg</file>
+        <file alias="bug-off">../assets/icons/bug-off.svg</file>
+        <file alias="cog">../assets/icons/cog.svg</file>
+        <file alias="eye">../assets/icons/eye.svg</file>
+        <file alias="eye-off">../assets/icons/eye-off.svg</file>
+        <file alias="file-plus">../assets/icons/file-plus.svg</file>
+        <file alias="folder-plus">../assets/icons/folder-plus.svg</file>
+        <file alias="funnel">../assets/icons/funnel.svg</file>
+        <file alias="generic_file">../assets/icons/generic_file.svg</file>
+        <file alias="logs">../assets/icons/logs.svg</file>
+        <file alias="play">../assets/icons/play.svg</file>
+        <file alias="refresh-cw">../assets/icons/refresh-cw.svg</file>
+        <file alias="send">../assets/icons/send.svg</file>
+        <file alias="split-horizontal">../assets/icons/square-split-horizontal.svg</file>
+        <file alias="star-fill">../assets/icons/star-fill.svg</file>
+        <file alias="star-outline">../assets/icons/star-outline.svg</file>
+        <file alias="trash">../assets/icons/trash-2.svg</file>
+    </qresource>
+    <qresource prefix="/fonts">
+        <file alias="jetbrains">../assets/fonts/JetBrainsMono_reg.ttf</file>
+        <file alias="titillium-regular">../assets/fonts/Titillium_regular.ttf</file>
+        <file alias="titillium-semibold">../assets/fonts/Titillium_semibold.ttf</file>
+        <file alias="titillium-bold">../assets/fonts/Titillium_bold.ttf</file>
+        <file alias="sf-regular">../assets/fonts/SF-Pro-Display-Regular.otf</file>
+        <file alias="sf-semibold">../assets/fonts/SF-Pro-Display-Semibold.otf</file>
+        <file alias="sf-bold">../assets/fonts/SF-Pro-Display-Bold.otf</file>
+    </qresource>
+</RCC>

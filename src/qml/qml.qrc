@@ -1,0 +1,24 @@
+<RCC>
+    <qresource prefix="/qml">
+        <file>qmldir</file>
+        <file>Main.qml</file>
+        <file>AppFonts.qml</file>
+        <file>AppStyle.qml</file>
+        <file>LogWindow.qml</file>
+        <file>SettingsWindow.qml</file>
+        <file>PlayerWindow.qml</file>
+        <file>components/PlayerButton.qml</file>
+        <file>components/PlayerCombo.qml</file>
+        <file>components/ToolbarButton.qml</file>
+        <file>components/ToolbarSelect.qml</file>
+        <file>components/ToolbarCheck.qml</file>
+        <file>components/ActionToggle.qml</file>
+        <file>components/ContextMenuItem.qml</file>
+        <file>components/ContextMenuSeparator.qml</file>
+        <file>components/TaskCard.qml</file>
+        <file>components/TaskFixedSide.qml</file>
+        <file>components/TaskSide.qml</file>
+        <file>components/TaskSourceSide.qml</file>
+        <file>components/TaskLine.qml</file>
+    </qresource>
+</RCC>
