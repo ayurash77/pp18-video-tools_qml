@@ -43,6 +43,9 @@ class AppController : public QObject {
     Q_PROPERTY(bool mediaCacheEnabled READ mediaCacheEnabled WRITE setMediaCacheEnabled NOTIFY mediaCacheChanged)
     Q_PROPERTY(bool mediaCacheRunning READ mediaCacheRunning NOTIFY mediaCacheChanged)
     Q_PROPERTY(bool mediaCacheComplete READ mediaCacheComplete NOTIFY mediaCacheChanged)
+    Q_PROPERTY(QString mediaCacheRootPath READ mediaCacheRootPath WRITE setMediaCacheRootPath NOTIFY mediaCacheSettingsChanged)
+    Q_PROPERTY(QString mediaCacheSizeText READ mediaCacheSizeText NOTIFY mediaCacheSettingsChanged)
+    Q_PROPERTY(double mediaCacheMaxSizeGb READ mediaCacheMaxSizeGb WRITE setMediaCacheMaxSizeGb NOTIFY mediaCacheSettingsChanged)
     Q_PROPERTY(QString telegramBotToken READ telegramBotToken NOTIFY telegramSettingsChanged)
     Q_PROPERTY(QString telegramChatId READ telegramChatId NOTIFY telegramSettingsChanged)
     Q_PROPERTY(QVariantList telegramRecipients READ telegramRecipients NOTIFY telegramSettingsChanged)
@@ -84,6 +87,11 @@ public:
     void setMediaCacheEnabled(bool enabled);
     bool mediaCacheRunning() const;
     bool mediaCacheComplete() const;
+    QString mediaCacheRootPath() const;
+    void setMediaCacheRootPath(const QString& path);
+    QString mediaCacheSizeText() const;
+    double mediaCacheMaxSizeGb() const;
+    void setMediaCacheMaxSizeGb(double value);
     QString telegramBotToken() const;
     QString telegramChatId() const;
     QVariantList telegramRecipients() const;
@@ -108,6 +116,9 @@ public:
     Q_INVOKABLE QString cachedPlaybackPath(const QString& path) const;
     Q_INVOKABLE bool cachePreviewExists(const QString& path) const;
     Q_INVOKABLE void requestCachePreview(const QString& path);
+    Q_INVOKABLE void chooseMediaCacheFolder();
+    Q_INVOKABLE void clearMediaCache();
+    Q_INVOKABLE void refreshMediaCacheStats();
     Q_INVOKABLE void saveTelegramSettings(const QString& botToken, const QVariantList& recipients, const QString& activeRecipientId);
     Q_INVOKABLE void importTelegramRecipients(const QString& botToken);
     Q_INVOKABLE void setActiveTelegramRecipient(const QString& recipientId);
@@ -129,6 +140,7 @@ signals:
     void playerWindowOpenChanged();
     void playerChanged();
     void mediaCacheChanged();
+    void mediaCacheSettingsChanged();
     void telegramSettingsChanged();
     void telegramRecipientsImported(const QVariantList& recipients, const QString& message);
     void telegramRecipientsImportFailed(const QString& message);
@@ -191,12 +203,17 @@ private:
     void startNextThumbnail();
     void stopThumbnailGeneration();
     QString appCacheRoot() const;
+    QString defaultAppCacheRoot() const;
     QString cachePreviewPath(const QString& path) const;
     QString cacheKeyForPath(const QString& path) const;
+    void configureMediaCacheDirs();
     void queueCachePreviews(const QStringList& files);
     void startNextCachePreview();
     void stopCachePreviewGeneration();
     void updateMediaCacheComplete();
+    qint64 mediaCacheSizeBytes() const;
+    QString formatByteSize(qint64 bytes) const;
+    void enforceMediaCacheLimit();
     void loadTelegramRecipients();
     void persistTelegramRecipients();
     QString activeTelegramChatId() const;
@@ -231,11 +248,13 @@ private:
     QVector<ThumbnailJob> m_thumbnailQueue;
     QString m_thumbnailDir;
     QProcess* m_thumbnailProcess = nullptr;
+    QString m_mediaCacheRootPath;
     QString m_cachePreviewDir;
     QVector<CachePreviewJob> m_cachePreviewQueue;
     QProcess* m_cachePreviewProcess = nullptr;
-    bool m_mediaCacheEnabled = false;
+    bool m_mediaCacheEnabled = true;
     bool m_mediaCacheComplete = false;
+    double m_mediaCacheMaxSizeGb = 20.0;
     bool m_settingsWindowOpen = false;
     bool m_logWindowOpen = false;
     bool m_playerWindowOpen = false;

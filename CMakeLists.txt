@@ -37,6 +37,11 @@ qt_standard_project_setup()
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
 
+set_source_files_properties(src/qml/AppStyle.qml
+    PROPERTIES
+        QT_QML_SINGLETON_TYPE TRUE
+)
+
 qt_add_executable(${PROJECT_NAME}
     src/main.cpp
     src/app/AppController.h

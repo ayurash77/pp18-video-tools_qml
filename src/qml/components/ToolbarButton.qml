@@ -31,13 +31,16 @@ Control {
     readonly property bool iconOnly: effectiveIcon.length > 0 && text.length === 0
     readonly property bool iconVariant: variant === "icon" && iconOnly
     readonly property string renderedIcon: effectiveIcon
+    readonly property int textHorizontalPadding: text.length > 0 ? 12 : 0
+    readonly property int contentImplicitWidth: (effectiveIcon.length > 0 ? AppStyle.toolbarButtonIconSize : 0)
+                                               + (effectiveIcon.length > 0 && text.length > 0 ? spacing : 0)
+                                               + textMetrics.advanceWidth
+                                               + textHorizontalPadding * 2
 
     signal clicked()
 
-    implicitWidth: AppStyle.toolbarButtonSize
+    implicitWidth: iconOnly ? AppStyle.toolbarButtonSize : Math.max(AppStyle.toolbarButtonSize, contentImplicitWidth)
     implicitHeight: AppStyle.toolbarButtonSize
-    width: implicitWidth
-    height: implicitHeight
     padding: 0
     spacing: 4
     opacity: enabled ? 1.0 : 0.45
@@ -72,6 +75,14 @@ Control {
                 verticalAlignment: Text.AlignVCenter
             }
         }
+    }
+
+    TextMetrics {
+        id: textMetrics
+        font.family: control.fontFamily
+        font.pixelSize: control.text.length > 1 ? 10 : 15
+        font.bold: true
+        text: control.text
     }
 
     background: Rectangle {

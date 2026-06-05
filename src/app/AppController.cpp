@@ -28,6 +28,8 @@
 
 namespace {
 constexpr const char* MacWorkPrefix = "/Volumes/work";
+constexpr double DefaultMediaCacheMaxSizeGb = 20.0;
+constexpr qint64 BytesInGb = 1024LL * 1024LL * 1024LL;
 
 double parseFrameRate(const QString& value)
 {
@@ -132,6 +134,24 @@ QString sourcePathForPreview(const QFileInfo& fileInfo)
     return movPath;
 }
 
+bool removeDirectoryContents(const QString& path)
+{
+    QDir dir(path);
+    if (!dir.exists())
+        return true;
+
+    bool ok = true;
+    const QFileInfoList entries = dir.entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries | QDir::Hidden | QDir::System);
+    for (const QFileInfo& entry : entries) {
+        if (entry.isDir()) {
+            ok = QDir(entry.absoluteFilePath()).removeRecursively() && ok;
+        } else {
+            ok = QFile::remove(entry.absoluteFilePath()) && ok;
+        }
+    }
+    return ok;
+}
+
 }
 
 AppController::AppController(QObject* parent)
@@ -140,10 +160,11 @@ AppController::AppController(QObject* parent)
     , m_preview(new FfmpegPreviewService(this))
     , m_telegram(new TelegramController(this))
 {
-    m_thumbnailDir = QDir(appCacheRoot()).absoluteFilePath("Thumbnails");
-    m_cachePreviewDir = QDir(appCacheRoot()).absoluteFilePath("Previews");
-    QDir().mkpath(m_thumbnailDir);
-    QDir().mkpath(m_cachePreviewDir);
+    QSettings settings;
+    m_mediaCacheRootPath = settings.value("cache/root", defaultAppCacheRoot()).toString();
+    m_mediaCacheMaxSizeGb = settings.value("cache/max_gb", DefaultMediaCacheMaxSizeGb).toDouble();
+    m_mediaCacheEnabled = settings.value("cache/enabled", true).toBool();
+    configureMediaCacheDirs();
 
     setStatusText("Готово");
 
@@ -361,6 +382,7 @@ void AppController::setMediaCacheEnabled(bool enabled)
         return;
 
     m_mediaCacheEnabled = enabled;
+    QSettings().setValue("cache/enabled", m_mediaCacheEnabled);
     if (m_mediaCacheEnabled) {
         queueCachePreviews(filteredDisplayFiles(m_allSourcePaths));
     } else {
@@ -378,6 +400,62 @@ bool AppController::mediaCacheRunning() const
 bool AppController::mediaCacheComplete() const
 {
     return m_mediaCacheComplete;
+}
+
+QString AppController::mediaCacheRootPath() const
+{
+    return appCacheRoot();
+}
+
+void AppController::setMediaCacheRootPath(const QString& path)
+{
+    const QString trimmed = path.trimmed();
+    if (trimmed.isEmpty())
+        return;
+
+    const QString normalized = QFileInfo(trimmed).absoluteFilePath();
+    if (QDir::cleanPath(m_mediaCacheRootPath) == QDir::cleanPath(normalized))
+        return;
+
+    stopThumbnailGeneration();
+    stopCachePreviewGeneration();
+    m_mediaCacheRootPath = normalized;
+    configureMediaCacheDirs();
+    QSettings().setValue("cache/root", m_mediaCacheRootPath);
+    appendLog("Папка кеша: " + QDir::toNativeSeparators(m_mediaCacheRootPath));
+    emit mediaCacheSettingsChanged();
+    emit mediaCacheChanged();
+
+    const QStringList displayFiles = filteredDisplayFiles(m_allSourcePaths);
+    if (!displayFiles.isEmpty()) {
+        queueSourceThumbnails(displayFiles);
+        queueFixedThumbnails();
+        if (m_mediaCacheEnabled)
+            queueCachePreviews(displayFiles);
+    }
+    updateMediaCacheComplete();
+}
+
+QString AppController::mediaCacheSizeText() const
+{
+    return formatByteSize(mediaCacheSizeBytes());
+}
+
+double AppController::mediaCacheMaxSizeGb() const
+{
+    return m_mediaCacheMaxSizeGb;
+}
+
+void AppController::setMediaCacheMaxSizeGb(double value)
+{
+    const double normalized = std::isfinite(value) ? std::max(0.0, value) : DefaultMediaCacheMaxSizeGb;
+    if (qFuzzyCompare(m_mediaCacheMaxSizeGb + 1.0, normalized + 1.0))
+        return;
+
+    m_mediaCacheMaxSizeGb = normalized;
+    QSettings().setValue("cache/max_gb", m_mediaCacheMaxSizeGb);
+    enforceMediaCacheLimit();
+    emit mediaCacheSettingsChanged();
 }
 
 QString AppController::telegramBotToken() const
@@ -760,6 +838,49 @@ void AppController::requestCachePreview(const QString& path)
     if (path.trimmed().isEmpty())
         return;
     queueCachePreviews({path});
+}
+
+void AppController::chooseMediaCacheFolder()
+{
+    openNativeFolderDialog("Выбери папку кеша PP18 VideoTools", appCacheRoot(),
+        [this](const QStringList& folders, const QString& error) {
+            if (!error.isEmpty()) {
+                appendLog("Выбор папки кеша отменен: " + error);
+                return;
+            }
+            if (folders.isEmpty()) {
+                appendLog("Выбор папки кеша отменен.");
+                return;
+            }
+            setMediaCacheRootPath(folders.first());
+        });
+}
+
+void AppController::clearMediaCache()
+{
+    stopThumbnailGeneration();
+    stopCachePreviewGeneration();
+
+    const bool thumbsOk = removeDirectoryContents(m_thumbnailDir);
+    const bool previewsOk = removeDirectoryContents(m_cachePreviewDir);
+    configureMediaCacheDirs();
+    appendLog(thumbsOk && previewsOk ? "Кеш очищен." : "Кеш очищен частично: часть файлов удалить не удалось.");
+    emit mediaCacheSettingsChanged();
+    updateMediaCacheComplete();
+
+    const QStringList displayFiles = filteredDisplayFiles(m_allSourcePaths);
+    if (displayFiles.isEmpty())
+        return;
+
+    queueSourceThumbnails(displayFiles);
+    queueFixedThumbnails();
+    if (m_mediaCacheEnabled)
+        queueCachePreviews(displayFiles);
+}
+
+void AppController::refreshMediaCacheStats()
+{
+    emit mediaCacheSettingsChanged();
 }
 
 void AppController::saveTelegramSettings(const QString& botToken, const QVariantList& recipients, const QString& activeRecipientId)
@@ -1337,11 +1458,17 @@ void AppController::stopThumbnailGeneration()
 
 QString AppController::appCacheRoot() const
 {
+    const QString root = m_mediaCacheRootPath.trimmed().isEmpty() ? defaultAppCacheRoot() : m_mediaCacheRootPath;
+    QDir().mkpath(root);
+    return root;
+}
+
+QString AppController::defaultAppCacheRoot() const
+{
     const QString home = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
     const QString root = home.isEmpty()
         ? QDir(QDir::tempPath()).absoluteFilePath("PP18_VideoTools/Cache")
         : QDir(home).absoluteFilePath("PP18_VideoTools/Cache");
-    QDir().mkpath(root);
     return root;
 }
 
@@ -1358,6 +1485,15 @@ QString AppController::cachePreviewPath(const QString& path) const
     if (path.trimmed().isEmpty())
         return QString();
     return QDir(m_cachePreviewDir).absoluteFilePath(cacheKeyForPath(path) + ".mp4");
+}
+
+void AppController::configureMediaCacheDirs()
+{
+    const QString root = appCacheRoot();
+    m_thumbnailDir = QDir(root).absoluteFilePath("Thumbnails");
+    m_cachePreviewDir = QDir(root).absoluteFilePath("Previews");
+    QDir().mkpath(m_thumbnailDir);
+    QDir().mkpath(m_cachePreviewDir);
 }
 
 void AppController::queueCachePreviews(const QStringList& files)
@@ -1465,6 +1601,72 @@ void AppController::updateMediaCacheComplete()
         return;
     m_mediaCacheComplete = complete;
     emit mediaCacheChanged();
+}
+
+qint64 AppController::mediaCacheSizeBytes() const
+{
+    qint64 total = 0;
+    const QStringList roots{m_thumbnailDir, m_cachePreviewDir};
+    for (const QString& root : roots) {
+        QDirIterator it(root, QDir::Files | QDir::Readable | QDir::Hidden | QDir::System,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            total += it.fileInfo().size();
+        }
+    }
+    return total;
+}
+
+QString AppController::formatByteSize(qint64 bytes) const
+{
+    const double gb = static_cast<double>(bytes) / static_cast<double>(BytesInGb);
+    if (gb >= 1.0)
+        return QString::number(gb, 'f', gb >= 10.0 ? 1 : 2) + " GB";
+
+    const double mb = static_cast<double>(bytes) / (1024.0 * 1024.0);
+    if (mb >= 1.0)
+        return QString::number(mb, 'f', mb >= 10.0 ? 1 : 2) + " MB";
+
+    const double kb = static_cast<double>(bytes) / 1024.0;
+    if (kb >= 1.0)
+        return QString::number(kb, 'f', 1) + " KB";
+
+    return QString::number(bytes) + " B";
+}
+
+void AppController::enforceMediaCacheLimit()
+{
+    if (m_mediaCacheMaxSizeGb <= 0.0)
+        return;
+
+    const qint64 limitBytes = static_cast<qint64>(m_mediaCacheMaxSizeGb * static_cast<double>(BytesInGb));
+    qint64 currentBytes = mediaCacheSizeBytes();
+    if (currentBytes <= limitBytes)
+        return;
+
+    QFileInfoList files;
+    const QStringList roots{m_thumbnailDir, m_cachePreviewDir};
+    for (const QString& root : roots) {
+        QDirIterator it(root, QDir::Files | QDir::Readable | QDir::Hidden | QDir::System,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            files << it.fileInfo();
+        }
+    }
+
+    std::sort(files.begin(), files.end(), [](const QFileInfo& left, const QFileInfo& right) {
+        return left.lastModified() < right.lastModified();
+    });
+
+    for (const QFileInfo& file : std::as_const(files)) {
+        if (currentBytes <= limitBytes)
+            break;
+        const qint64 fileSize = file.size();
+        if (QFile::remove(file.absoluteFilePath()))
+            currentBytes -= fileSize;
+    }
 }
 
 void AppController::loadTelegramRecipients()
@@ -1695,6 +1897,8 @@ void AppController::onThumbnailFinished(int exitCode, QProcess::ExitStatus statu
 
     process->deleteLater();
     m_thumbnailProcess = nullptr;
+    enforceMediaCacheLimit();
+    emit mediaCacheSettingsChanged();
     startNextThumbnail();
 }
 
@@ -1720,7 +1924,9 @@ void AppController::onCachePreviewFinished(int exitCode, QProcess::ExitStatus st
 
     process->deleteLater();
     m_cachePreviewProcess = nullptr;
+    enforceMediaCacheLimit();
     emit mediaCacheChanged();
+    emit mediaCacheSettingsChanged();
     startNextCachePreview();
     updateMediaCacheComplete();
 }

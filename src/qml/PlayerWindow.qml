@@ -10,7 +10,9 @@ Window {
     height: 790
     minimumWidth: 760
     minimumHeight: 520
-    title: playerTitle.length > 0 ? ("PP18 Video Tools - " + playerTitle) : "PP18 Video Tools - Player"
+    title: playerTitle.length > 0
+           ? ("PP18 Video Tools - " + playerTitle + (activeCachedPlayback ? " (cached preview)" : ""))
+           : "PP18 Video Tools - Player"
     color: "#1e2028"
 
     property string initialPath: ""
@@ -27,6 +29,9 @@ Window {
     property bool infoVisible: false
     property bool versionsVisible: true
     property bool cachePlaybackEnabled: true
+    readonly property bool activeCachedPlayback: cachePlaybackEnabled
+                                                 && appController.mediaCacheSizeText.length >= 0
+                                                 && appController.cachePreviewExists(activePath)
     property bool splitEnabled: false
     property real splitPercent: 50
     property real splitHandleYPercent: 50
@@ -118,6 +123,13 @@ Window {
         if (cachePlaybackEnabled && typeof appController !== "undefined")
             return appController.cachedPlaybackPath(path)
         return path
+    }
+
+    function isCachedPlayback(path) {
+        return cachePlaybackEnabled
+            && path
+            && typeof appController !== "undefined"
+            && appController.cachePreviewExists(path)
     }
 
     function playbackUrl(path) {
@@ -1391,18 +1403,23 @@ Window {
                                 buttonWidth: 82
                                 onClicked: versionsVisible = checked
                             }
-                            PlayerButton {
-                                iconSource: !cachePlaybackEnabled
-                                            ? "qrc:/icons/monitor-down"
-                                            : appController.cachePreviewExists(activePath)
-                                              ? "qrc:/icons/monitor-check"
-                                              : "qrc:/icons/monitor-pause"
-                                checkable: true
-                                checked: cachePlaybackEnabled
-                                buttonWidth: 34
+                            ToolbarButton {
+                                variant: "icon"
+                                color: cachePlaybackEnabled ? "success" : "secondary"
+                                icon: !cachePlaybackEnabled
+                                      ? "qrc:/icons/monitor-down"
+                                      : appController.mediaCacheRunning
+                                        ? "qrc:/icons/monitor-pause"
+                                        : appController.cachePreviewExists(activePath)
+                                          ? "qrc:/icons/monitor-check"
+                                          : "qrc:/icons/monitor-down"
+                                label: cachePlaybackEnabled ? "Проигрывать кеш preview" : "Проигрывать оригинал"
+                                active: cachePlaybackEnabled
+                                Layout.preferredWidth: AppStyle.toolbarButtonSize
+                                Layout.preferredHeight: AppStyle.toolbarButtonSize
                                 onClicked: {
-                                    cachePlaybackEnabled = checked
-                                    if (checked) {
+                                    cachePlaybackEnabled = !cachePlaybackEnabled
+                                    if (cachePlaybackEnabled) {
                                         if (!appController.mediaCacheEnabled)
                                             appController.mediaCacheEnabled = true
                                         appController.requestCachePreview(activePath)

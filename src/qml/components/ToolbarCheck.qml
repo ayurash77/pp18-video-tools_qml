@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import ".."
 
 CheckBox {
     id: control
@@ -12,6 +13,8 @@ CheckBox {
 
     text: labelText
     spacing: 8
+    implicitWidth: indicator.implicitWidth + spacing + textMetrics.advanceWidth
+    implicitHeight: AppStyle.toolbarSelectHeight
     font.family: fontFamily
     font.pixelSize: 12
     font.bold: true
@@ -42,5 +45,13 @@ CheckBox {
         font.pixelSize: 12
         font.bold: true
         verticalAlignment: Text.AlignVCenter
+    }
+
+    TextMetrics {
+        id: textMetrics
+        font.family: control.fontFamily
+        font.pixelSize: 12
+        font.bold: true
+        text: control.text
     }
 }

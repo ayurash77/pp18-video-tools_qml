@@ -520,11 +520,15 @@ ApplicationWindow {
         chatId: appController.telegramChatId
         recipients: appController.telegramRecipients
         activeRecipientId: appController.activeTelegramRecipientId
+        mediaCacheRootPath: appController.mediaCacheRootPath
+        mediaCacheSizeText: appController.mediaCacheSizeText
+        mediaCacheMaxSizeGb: appController.mediaCacheMaxSizeGb
         appFamily: root.appFamily
         monoFamily: root.monoFamily
         onClosing: appController.settingsWindowOpen = false
-        onSaveRequested: function(botToken, recipients, activeRecipientId) {
+        onSaveRequested: function(botToken, recipients, activeRecipientId, mediaCacheMaxSizeGb) {
             appController.saveTelegramSettings(botToken, recipients, activeRecipientId)
+            appController.mediaCacheMaxSizeGb = mediaCacheMaxSizeGb
             settingsWindow.close()
         }
         onImportUsersRequested: function(botToken) {

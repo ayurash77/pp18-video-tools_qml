@@ -15,10 +15,13 @@ Window {
     property string chatId: ""
     property var recipients: []
     property string activeRecipientId: ""
+    property string mediaCacheRootPath: ""
+    property string mediaCacheSizeText: ""
+    property real mediaCacheMaxSizeGb: 20
     property string appFamily: ""
     property string monoFamily: "Monospace"
     property bool importRunning: false
-    signal saveRequested(string botToken, var recipients, string activeRecipientId)
+    signal saveRequested(string botToken, var recipients, string activeRecipientId, real mediaCacheMaxSizeGb)
     signal importUsersRequested(string botToken)
 
     function resetDraft() {
@@ -39,6 +42,7 @@ Window {
         }
         if (recipientsModel.count > 0 && activeId().length === 0)
             recipientsModel.setProperty(0, "active", true)
+        cacheLimitField.text = Number(mediaCacheMaxSizeGb).toLocaleString(Qt.locale(), "f", mediaCacheMaxSizeGb % 1 === 0 ? 0 : 2)
         messageLabel.text = ""
     }
 
@@ -115,6 +119,14 @@ Window {
     function importUsersFailed(message) {
         importRunning = false
         messageLabel.text = message
+    }
+
+    function cacheLimitDraftGb() {
+        const normalized = String(cacheLimitField.text || "").replace(",", ".").trim()
+        const value = Number(normalized)
+        if (!isFinite(value) || value < 0)
+            return mediaCacheMaxSizeGb
+        return value
     }
 
     onVisibleChanged: {
@@ -231,6 +243,89 @@ Window {
                             Button {
                                 text: "Проверить"
                                 enabled: false
+                            }
+                        }
+                    }
+
+                    Panel {
+                        title: "Кеширование"
+                        Layout.fillWidth: true
+
+                        Label {
+                            text: "Кеш используется для thumbnails и облегченных mp4 preview, которые плеер может проигрывать вместо тяжелых исходников."
+                            color: "#8d95aa"
+                            font.pixelSize: 12
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        GridLayout {
+                            Layout.fillWidth: true
+                            columns: 1
+                            rowSpacing: 8
+
+                            FieldLabel { text: "Папка кеша" }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                TextInputBox {
+                                    text: settingsWindow.mediaCacheRootPath
+                                    readOnly: true
+                                    Layout.fillWidth: true
+                                    selectByMouse: true
+                                }
+
+                                Button {
+                                    text: "Изменить"
+                                    onClicked: appController.chooseMediaCacheFolder()
+                                }
+                            }
+
+                            FieldLabel { text: "Занято кешем" }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Label {
+                                    text: settingsWindow.mediaCacheSizeText
+                                    color: "#af8f5d"
+                                    font.family: settingsWindow.monoFamily
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    verticalAlignment: Text.AlignVCenter
+                                    Layout.fillWidth: true
+                                }
+
+                                Button {
+                                    text: "Обновить"
+                                    onClicked: appController.refreshMediaCacheStats()
+                                }
+
+                                Button {
+                                    text: "Очистить кеш"
+                                    onClicked: appController.clearMediaCache()
+                                }
+                            }
+
+                            FieldLabel { text: "Максимальный объем, GB" }
+                            TextInputBox {
+                                id: cacheLimitField
+                                Layout.preferredWidth: 160
+                                validator: DoubleValidator {
+                                    bottom: 0
+                                    decimals: 2
+                                    notation: DoubleValidator.StandardNotation
+                                }
+                                placeholderText: "20"
+                            }
+
+                            Label {
+                                text: "0 отключает ограничение. При превышении лимита удаляются самые старые файлы кеша."
+                                color: "#8d95aa"
+                                font.pixelSize: 12
+                                wrapMode: Text.WordWrap
+                                Layout.fillWidth: true
                             }
                         }
                     }
@@ -449,7 +544,7 @@ Window {
                     Button {
                         text: "Сохранить"
                         onClicked: {
-                            settingsWindow.saveRequested(tokenField.text, draftRecipients(), activeId())
+                            settingsWindow.saveRequested(tokenField.text, draftRecipients(), activeId(), cacheLimitDraftGb())
                             messageLabel.text = "Настройки сохранены"
                         }
                     }
