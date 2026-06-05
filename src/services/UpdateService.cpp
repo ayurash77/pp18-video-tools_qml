@@ -159,6 +159,12 @@ void UpdateService::onLatestReleaseFinished()
     m_reply = nullptr;
     setChecking(false);
 
+    if (httpStatus == 404) {
+        setStatusText(QStringLiteral("На GitHub пока нет опубликованных релизов для этого репозитория."));
+        emit log(m_statusText);
+        return;
+    }
+
     if (networkError != QNetworkReply::NoError) {
         setStatusText(QStringLiteral("Ошибка проверки обновлений: %1").arg(reply->errorString()));
         emit log(m_statusText);
