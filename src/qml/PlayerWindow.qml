@@ -1156,7 +1156,6 @@ Window {
                             visible: true
                             z: primaryUsingAlternate ? 0 : 1
                             fillMode: VideoOutput.PreserveAspectFit
-                            endOfStreamPolicy: VideoOutput.KeepLastFrame
                             onSourceRectChanged: handlePrimaryVideoGeometryChanged()
                         }
 
@@ -1170,7 +1169,6 @@ Window {
                             visible: true
                             z: primaryUsingAlternate ? 1 : 0
                             fillMode: VideoOutput.PreserveAspectFit
-                            endOfStreamPolicy: VideoOutput.KeepLastFrame
                             onSourceRectChanged: handlePrimaryVideoGeometryChanged()
                         }
                     }
@@ -1191,7 +1189,6 @@ Window {
                             width: videoDisplayWidth()
                             height: videoDisplayHeight()
                             fillMode: VideoOutput.PreserveAspectFit
-                            endOfStreamPolicy: VideoOutput.KeepLastFrame
                             onSourceRectChanged: applyFitZoom()
                         }
                     }
