@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(PP18_VideoTools VERSION 0.1.3 LANGUAGES CXX)
+project(PP18_VideoTools VERSION 0.1.4 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -31,7 +31,7 @@ endif()
 
 # Попытка подавить варнинг о Qt6TaskTree (может отсутствовать в некоторых установках Qt)
 find_package(Qt6 COMPONENTS TaskTree QUIET)
-find_package(Qt6 REQUIRED COMPONENTS Network Multimedia Qml Quick QuickControls2)
+find_package(Qt6 REQUIRED COMPONENTS Network Multimedia Qml Quick QuickControls2 Svg)
 
 qt_standard_project_setup()
 qt_policy(SET QTP0001 NEW)
@@ -112,6 +112,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   Qt6::Qml
   Qt6::Quick
   Qt6::QuickControls2
+  Qt6::Svg
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/src")
