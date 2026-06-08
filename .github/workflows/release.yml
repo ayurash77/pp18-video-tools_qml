@@ -50,6 +50,11 @@ jobs:
       - name: Deploy Qt runtime
         run: macdeployqt "release/${APP_NAME}_macos-arm64/${APP_NAME}.app" -verbose=1
 
+      - name: Ad-hoc sign macOS app bundle
+        run: |
+          codesign --force --deep --sign - "release/${APP_NAME}_macos-arm64/${APP_NAME}.app"
+          codesign --verify --deep --strict --verbose=4 "release/${APP_NAME}_macos-arm64/${APP_NAME}.app"
+
       - name: Create package
         run: |
           mkdir -p dist
