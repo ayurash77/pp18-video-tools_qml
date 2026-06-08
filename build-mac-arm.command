@@ -36,7 +36,7 @@ cmake -S . -B "$BUILD_DIR" $GEN \
 cmake --build "$BUILD_DIR" --config Release
 
 if [[ -x "$MACDEPLOYQT" ]]; then
-  "$MACDEPLOYQT" "$APP_BUNDLE" -verbose=1
+  "$MACDEPLOYQT" "$APP_BUNDLE" -qmldir="$PWD/src/qml" -verbose=1
 else
   echo "WARN: macdeployqt not found at: $MACDEPLOYQT"
 fi

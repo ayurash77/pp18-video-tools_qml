@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(PP18_VideoTools VERSION 0.1.1 LANGUAGES CXX)
+project(PP18_VideoTools VERSION 0.1.2 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -174,7 +174,7 @@ if(WIN32)
 
     if(WINDEPLOYQT_EXECUTABLE)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND "${WINDEPLOYQT_EXECUTABLE}" --release --no-translations --qmldir "${CMAKE_SOURCE_DIR}/src" "$<TARGET_FILE:${PROJECT_NAME}>"
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}" --release --compiler-runtime --no-translations --qmldir "${CMAKE_SOURCE_DIR}/src/qml" "$<TARGET_FILE:${PROJECT_NAME}>"
             COMMENT "Deploying Qt dependencies to build directory..."
             VERBATIM
         )

@@ -48,7 +48,11 @@ jobs:
         run: cmake --build release/${APP_NAME}_macos-arm64 --config Release
 
       - name: Deploy Qt runtime
-        run: macdeployqt "release/${APP_NAME}_macos-arm64/${APP_NAME}.app" -verbose=1
+        run: |
+          macdeployqt "release/${APP_NAME}_macos-arm64/${APP_NAME}.app" \
+            -qmldir="${GITHUB_WORKSPACE}/src/qml" \
+            -verbose=1
+          test -f "release/${APP_NAME}_macos-arm64/${APP_NAME}.app/Contents/Resources/qml/QtQuick/Controls/libqtquickcontrols2plugin.dylib"
 
       - name: Ad-hoc sign macOS app bundle
         run: |
@@ -103,6 +107,47 @@ jobs:
       - name: Build
         shell: pwsh
         run: cmake --build release/${env:APP_NAME}_win-x64 --config Release
+
+      - name: Deploy Qt runtime
+        shell: pwsh
+        run: |
+          $buildOutput = "release/${env:APP_NAME}_win-x64/Release"
+          $exe = "$buildOutput/${env:APP_NAME}.exe"
+          $windeployqt = "${env:QT_DIR}\bin\windeployqt.exe"
+
+          & $windeployqt --release --compiler-runtime --no-translations --qmldir "${env:GITHUB_WORKSPACE}\src\qml" $exe
+
+          if (-not (Test-Path "$buildOutput\qml\QtQuick\Controls\qtquickcontrols2plugin.dll")) {
+            throw "QtQuick.Controls QML plugin was not deployed."
+          }
+
+          $crtCandidates = @()
+          if ($env:VCToolsRedistDir) {
+            $crtCandidates += Join-Path $env:VCToolsRedistDir "x64\Microsoft.VC143.CRT"
+            $crtCandidates += Join-Path $env:VCToolsRedistDir "x64\Microsoft.VC142.CRT"
+          }
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (Test-Path $vswhere) {
+            $vsInstall = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if (-not [string]::IsNullOrWhiteSpace($vsInstall)) {
+              $redistRoot = Join-Path $vsInstall "VC\Redist\MSVC"
+              if (Test-Path $redistRoot) {
+                $crtCandidates += Get-ChildItem $redistRoot -Directory |
+                  ForEach-Object { Get-ChildItem (Join-Path $_.FullName "x64") -Directory -Filter "Microsoft.VC*.CRT" -ErrorAction SilentlyContinue } |
+                  Select-Object -ExpandProperty FullName
+              }
+            }
+          }
+
+          $crtCandidates |
+            Where-Object { $_ -and (Test-Path $_) } |
+            Select-Object -Unique |
+            ForEach-Object { Copy-Item -Path "$_\*.dll" -Destination $buildOutput -Force }
+
+          if (-not (Test-Path "$buildOutput\vcruntime140.dll")) {
+            throw "MSVC runtime DLLs were not deployed."
+          }
 
       - name: Create package
         shell: pwsh

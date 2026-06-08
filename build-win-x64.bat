@@ -46,7 +46,7 @@ if errorlevel 1 ( echo ERROR: Build failed & exit /b 1 )
 set "EXE=%BUILD_DIR%\PP18_VideoTools.exe"
 if not exist "%EXE%" ( echo ERROR: %EXE% not found after build. & exit /b 1 )
 
-"%WINDEPLOYQT%" --release --no-translations --qmldir src "%EXE%"
+"%WINDEPLOYQT%" --release --compiler-runtime --no-translations --qmldir src\qml "%EXE%"
 
 echo.
 echo [OK] Build + deploy finished. See %BUILD_DIR%.

@@ -182,7 +182,7 @@ It compares `tag_name` with `QCoreApplication::applicationVersion()`.
 The app version is now set by CMake:
 
 ```cmake
-project(PP18_VideoTools VERSION 0.1.0 LANGUAGES CXX)
+project(PP18_VideoTools VERSION 0.1.2 LANGUAGES CXX)
 target_compile_definitions(${PROJECT_NAME} PRIVATE APP_VERSION="${PROJECT_VERSION}")
 ```
 
@@ -218,16 +218,16 @@ v0.1.2
 The CMake project version must match the release without the `v` prefix:
 
 ```cmake
-project(PP18_VideoTools VERSION 0.1.1 LANGUAGES CXX)
+project(PP18_VideoTools VERSION 0.1.2 LANGUAGES CXX)
 ```
 
 Recommended GitHub Release asset names:
 
 ```text
-PP18_VideoTools_win-x64_v0.1.1.zip
-PP18_VideoTools_macos-arm64_v0.1.1.zip
-PP18_VideoTools_macos-universal_v0.1.1.zip
-PP18_VideoTools_macos-x64_v0.1.1.zip
+PP18_VideoTools_win-x64_v0.1.2.zip
+PP18_VideoTools_macos-arm64_v0.1.2.zip
+PP18_VideoTools_macos-universal_v0.1.2.zip
+PP18_VideoTools_macos-x64_v0.1.2.zip
 ```
 
 `UpdateService::platformAssetScore()` chooses an asset based on platform and architecture:
@@ -273,9 +273,15 @@ on:
 It produces package assets named like:
 
 ```text
-PP18_VideoTools_macos-arm64_v0.1.0.zip
-PP18_VideoTools_win-x64_v0.1.0.zip
+PP18_VideoTools_macos-arm64_v0.1.2.zip
+PP18_VideoTools_win-x64_v0.1.2.zip
 ```
+
+Release packaging checks:
+
+- macOS `macdeployqt` must run with `-qmldir=.../src/qml`; otherwise `QtQuick.Controls` QML plugins are missing from `Contents/Resources/qml`.
+- macOS bundle is ad-hoc signed after `macdeployqt`; full Apple Developer ID signing/notarization is still future work.
+- Windows package must include deployed QML modules and MSVC runtime DLLs such as `vcruntime140.dll`.
 
 This will allow development on macOS while GitHub Actions builds Windows packages automatically.
 
