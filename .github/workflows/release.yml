@@ -140,11 +140,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --title "$TAG" --notes "Automated build for $TAG"
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$REPO" --title "$TAG" --notes "Automated build for $TAG"
           fi
 
           find dist -type f -name "*.zip" -print0 | while IFS= read -r -d '' asset; do
-            gh release upload "$TAG" "$asset" --clobber
+            gh release upload "$TAG" "$asset" --repo "$REPO" --clobber
           done
