@@ -111,6 +111,36 @@ bool isPreviewFile(const QFileInfo& fileInfo)
     return fileInfo.completeBaseName().endsWith("__preview", Qt::CaseInsensitive);
 }
 
+bool isFixedOutputFile(const QFileInfo& fileInfo)
+{
+    return fileInfo.dir().dirName().compare("fixed", Qt::CaseInsensitive) == 0;
+}
+
+QString sourcePathForFixedOutput(const QFileInfo& fileInfo)
+{
+    if (!isFixedOutputFile(fileInfo))
+        return fileInfo.absoluteFilePath();
+
+    QDir sourceDir(fileInfo.dir());
+    if (!sourceDir.cdUp())
+        return {};
+
+    const QString sourcePath = sourceDir.absoluteFilePath(fileInfo.fileName());
+    if (VideoFileModel::isVideoPath(sourcePath))
+        return QFileInfo(sourcePath).absoluteFilePath();
+
+    static const QStringList sourceExtensions = {
+        "mov", "mp4", "m4v", "mkv", "avi", "mxf", "webm"
+    };
+    for (const QString& extension : sourceExtensions) {
+        const QString candidate = sourceDir.absoluteFilePath(fileInfo.completeBaseName() + "." + extension);
+        if (VideoFileModel::isVideoPath(candidate))
+            return QFileInfo(candidate).absoluteFilePath();
+    }
+
+    return {};
+}
+
 QString sourcePathForPreview(const QFileInfo& fileInfo)
 {
     QString stem = fileInfo.completeBaseName();
@@ -1051,14 +1081,22 @@ QStringList AppController::expandVideoPaths(const QStringList& paths) const
                             QDirIterator::Subdirectories);
             while (it.hasNext()) {
                 const QString filePath = it.next();
-                if (VideoFileModel::isVideoPath(filePath))
-                    videoFiles << filePath;
+                const QFileInfo candidateInfo(filePath);
+                if (!VideoFileModel::isVideoPath(candidateInfo.absoluteFilePath()))
+                    continue;
+
+                const QString sourcePath = sourcePathForFixedOutput(candidateInfo);
+                if (!sourcePath.isEmpty())
+                    videoFiles << sourcePath;
             }
             continue;
         }
 
-        if (VideoFileModel::isVideoPath(path))
-            videoFiles << fileInfo.absoluteFilePath();
+        if (VideoFileModel::isVideoPath(path)) {
+            const QString sourcePath = sourcePathForFixedOutput(fileInfo);
+            if (!sourcePath.isEmpty())
+                videoFiles << sourcePath;
+        }
     }
     return videoFiles;
 }

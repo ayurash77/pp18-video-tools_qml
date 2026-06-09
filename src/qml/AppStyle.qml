@@ -23,13 +23,13 @@ QtObject {
     readonly property color borderMuted: "#303541"
     readonly property color text: "#d9deea"
     readonly property color mutedText: "#8d95aa"
-    readonly property color accent: "#08aeea"
+    readonly property color accent: "#0670ff"
     readonly property color status: "#af8f5d"
 
     function toolbarButtonBase(color) {
         switch (color) {
         case "primary":
-            return "#146ecc"
+            return "#1166ee"
         case "danger":
             return "#cc3c3f"
         case "warning":

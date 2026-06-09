@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.impl
 import QtQuick.Layouts
 import QtMultimedia
 import "components"
@@ -14,6 +15,17 @@ Window {
            ? ("PP18 Video Tools - " + playerTitle + (activeCachedPlayback ? " (cached preview)" : ""))
            : "PP18 Video Tools - Player"
     color: "#1e2028"
+
+    readonly property color playerBg: "#1e2028"
+    readonly property color playerPanel: "#242730"
+    readonly property color playerCard: "#242730"
+    readonly property color playerInput: "#20232c"
+    readonly property color playerBorder: "#343946"
+    readonly property color playerBorderMuted: "#303541"
+    readonly property color playerText: "#d9deea"
+    readonly property color playerMutedText: "#8d95aa"
+    readonly property color playerDimText: "#687086"
+    readonly property color playerAccent: "#2299ff"
 
     property string initialPath: ""
     property string playerTitle: ""
@@ -57,6 +69,8 @@ Window {
     property bool pendingCompareRestore: false
     property bool compareSwitchingSource: false
     property var playbackSpeeds: [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
+    property real playbackRate: 1.0
+    property bool loopPlaybackEnabled: true
     signal requestVersions(string path)
 
     function fileName(path) {
@@ -207,6 +221,15 @@ Window {
             || (output.videoSink.videoSize.width > 0 && output.videoSink.videoSize.height > 0)
     }
 
+    function outputResolutionLabel(output) {
+        if (!output)
+            return "---"
+        if (!hasRealVideoSize(output))
+            return "---"
+        const size = videoSizeFromOutput(output)
+        return Math.round(size.width) + "x" + Math.round(size.height)
+    }
+
     function videoPixelWidth() {
         return videoSizeFromOutput(currentPrimaryOutput()).width
     }
@@ -267,6 +290,35 @@ Window {
         return zoomMode === "fit" ? ("Fit " + percent + "%") : (percent + "%")
     }
 
+    function applyZoomPreset(value) {
+        if (value === "fit") {
+            setFitZoom()
+        } else {
+            setZoom(Number(value))
+            panX = 0
+            panY = 0
+        }
+    }
+
+    function playbackSpeedIndex() {
+        for (let i = 0; i < playbackSpeeds.length; ++i) {
+            if (Math.abs(playbackSpeeds[i] - playbackRate) < 0.001)
+                return i
+        }
+        return 3
+    }
+
+    function setPlaybackRate(value) {
+        playbackRate = value
+        currentPrimaryPlayer().playbackRate = value
+        standbyPrimaryPlayer().playbackRate = value
+        comparePlayer.playbackRate = value
+    }
+
+    function toggleLoopMode() {
+        loopPlaybackEnabled = !loopPlaybackEnabled
+    }
+
     function splitMarginPercent() {
         if (stage.width <= 0)
             return 0
@@ -325,9 +377,17 @@ Window {
         const chromeH = Math.max(0, height - stage.height)
         const requestedW = Math.ceil(videoW + chromeW)
         const requestedH = Math.ceil(videoH + chromeH)
-        const available = screen ? screen.availableGeometry : Qt.rect(x, y, requestedW, requestedH)
-        const maxW = Math.max(minimumWidth, available.width - 40)
-        const maxH = Math.max(minimumHeight, available.height - 40)
+        const available = screen && screen.availableGeometry
+                          && isFinite(screen.availableGeometry.x)
+                          && isFinite(screen.availableGeometry.y)
+                          && screen.availableGeometry.width > 0
+                          && screen.availableGeometry.height > 0
+                        ? screen.availableGeometry
+                        : null
+        const availableW = available ? available.width : requestedW
+        const availableH = available ? available.height : requestedH
+        const maxW = Math.max(minimumWidth, availableW - 40)
+        const maxH = Math.max(minimumHeight, availableH - 40)
         const nextWidth = Math.max(minimumWidth, Math.min(requestedW, maxW))
         const nextHeight = Math.max(minimumHeight, Math.min(requestedH, maxH))
 
@@ -345,8 +405,12 @@ Window {
 
         panX = 0
         panY = 0
-        x = Math.round(available.x + (available.width - width) / 2)
-        y = Math.round(available.y + (available.height - height) / 2)
+        if (available) {
+            const centeredX = Math.round(available.x + (available.width - width) / 2)
+            const centeredY = Math.round(available.y + (available.height - height) / 2)
+            x = Math.max(available.x, Math.min(centeredX, available.x + available.width - width))
+            y = Math.max(available.y, Math.min(centeredY, available.y + available.height - height))
+        }
         initialWindowSized = true
     }
 
@@ -360,6 +424,10 @@ Window {
 
     function versionAt(index) {
         return index >= 0 && index < versions.length ? versions[index] : null
+    }
+
+    function latestVersionPath() {
+        return versions.length > 0 ? versions[0].path : activePath
     }
 
     function clampedPosition(player, position) {
@@ -435,7 +503,7 @@ Window {
         primaryResumeAfterPlay.stop()
         primaryResumeWatchdog.stop()
         primaryRestoreTick.stop()
-        player.playbackRate = speedCombo.currentValue || 1
+        player.playbackRate = playbackRate
         pendingPrimaryRestore = false
 
         if (pendingPrimaryPlaying) {
@@ -552,6 +620,11 @@ Window {
         setActivePath(path, false)
     }
 
+    function selectLayerVersion(path) {
+        hideVersionsAbove(versionIndex(path))
+        setActivePath(path, false)
+    }
+
     function toggleVersionVisibility(path) {
         const key = pathKey(path)
         const hidden = hiddenVersionKeys[key] === true
@@ -560,7 +633,7 @@ Window {
         if (hidden) {
             delete next[key]
             hiddenVersionKeys = next
-            setActivePath(path, false)
+            setActivePath(firstVisibleVersionPath(), false)
             return
         }
 
@@ -570,8 +643,7 @@ Window {
         next[key] = true
         hiddenVersionKeys = next
 
-        if (samePath(path, activePath))
-            setActivePath(firstVisibleVersionPath(), false)
+        setActivePath(firstVisibleVersionPath(), false)
     }
 
     function reload(path) {
@@ -640,7 +712,7 @@ Window {
     function toggleSplit() {
         splitEnabled = !splitEnabled
         if (splitEnabled && comparePath.length === 0)
-            setComparePath(activePath)
+            setComparePath(latestVersionPath())
         if (!splitEnabled)
             comparePlayer.pause()
     }
@@ -839,7 +911,7 @@ Window {
         id: primaryPlayer
         audioOutput: AudioOutput { volume: 1.0 }
         videoOutput: primaryVideoOutputA
-        loops: MediaPlayer.Infinite
+        loops: loopPlaybackEnabled ? MediaPlayer.Infinite : 1
         onMediaStatusChanged: restorePrimary()
         onSeekableChanged: restorePrimary()
         onPositionChanged: handlePrimaryPositionChanged(primaryPlayer, position)
@@ -849,7 +921,7 @@ Window {
         id: alternatePrimaryPlayer
         audioOutput: AudioOutput { muted: true }
         videoOutput: primaryVideoOutputB
-        loops: primaryPlayer.loops
+        loops: loopPlaybackEnabled ? MediaPlayer.Infinite : 1
         playbackRate: primaryPlayer.playbackRate
         onMediaStatusChanged: restorePrimary()
         onSeekableChanged: restorePrimary()
@@ -860,14 +932,14 @@ Window {
         id: comparePlayer
         audioOutput: AudioOutput { muted: true }
         videoOutput: compareVideoOutput
-        loops: currentPrimaryPlayer().loops
+        loops: loopPlaybackEnabled ? MediaPlayer.Infinite : 1
         playbackRate: currentPrimaryPlayer().playbackRate
         onMediaStatusChanged: restoreCompare()
     }
 
     Rectangle {
         anchors.fill: parent
-        color: "#1e2028"
+        color: playerBg
 
         RowLayout {
             anchors.fill: parent
@@ -879,66 +951,108 @@ Window {
                 Layout.preferredWidth: 182
                 Layout.fillHeight: true
                 radius: 6
-                color: "#24273080"
-                border.color: "#343946"
+                color: playerCard
+                border.color: playerBorder
 
                 ColumnLayout {
                     anchors.fill: parent
                     spacing: 0
 
-                    Label {
-                        text: "VERSIONS"
-                        color: "#8d95aa"
-                        font.family: appFamily
-                        font.pixelSize: 11
-                        font.bold: true
+                    Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 36
-                        leftPadding: 12
-                        verticalAlignment: Text.AlignVCenter
+                        color: "transparent"
+
+                        Label {
+                            anchors.fill: parent
+                            text: "VERSIONS"
+                            color: playerMutedText
+                            font.family: appFamily
+                            font.pixelSize: 11
+                            font.bold: true
+                            leftPadding: 12
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            height: 1
+                            color: playerBorder
+                        }
                     }
 
                     ListView {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        Layout.leftMargin: 8
+                        Layout.rightMargin: 8
+                        Layout.topMargin: 8
+                        Layout.bottomMargin: 8
                         clip: true
                         model: versions
+                        spacing: 4
                         delegate: Rectangle {
                             property bool hidden: isVersionHidden(modelData.path)
                             property bool active: samePath(modelData.path, activePath)
-                            width: ListView.view.width - 16
-                            height: 31
-                            x: 8
+                            width: ListView.view.width
+                            height: 30
                             radius: 4
                             opacity: hidden ? 0.45 : 1.0
-                            color: active && !hidden ? "#26384d" : versionMouse.containsMouse ? "#303542" : "transparent"
-                            border.color: active && !hidden ? "#3b82f6" : "#303541"
+                            color: versionMouse.containsMouse && !lastVisible ? "#303542" : "transparent"
+                            border.width: 1
+                            border.color: versionMouse.containsMouse && !lastVisible ? "#4a5366" : playerBorderMuted
+
+                            readonly property int visibleCount: visibleVersionCount()
+                            readonly property bool lastVisible: !hidden && visibleCount <= 1
 
                             RowLayout {
                                 anchors.fill: parent
                                 anchors.leftMargin: 8
                                 anchors.rightMargin: 7
                                 spacing: 7
+                                z: 1
 
-                                Label {
-                                    text: "o"
-                                    color: hidden ? "#687086" : "#08aeea"
-                                    font.family: monoFamily
-                                    font.pixelSize: 11
-                                    font.bold: true
+                                Item {
+                                    Layout.preferredWidth: 18
+                                    Layout.preferredHeight: 24
+
+                                    ColorImage {
+                                        anchors.centerIn: parent
+                                        width: 14
+                                        height: 14
+                                        source: hidden ? "qrc:/icons/eye-off" : "qrc:/icons/eye"
+                                        fillMode: Image.PreserveAspectFit
+                                        color: hidden ? playerDimText : playerAccent
+                                        opacity: lastVisible ? 0.45 : 1.0
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        z: 2
+                                        enabled: !lastVisible
+                                        hoverEnabled: true
+                                        cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                        onClicked: function(mouse) {
+                                            mouse.accepted = true
+                                            toggleVersionVisibility(modelData.path)
+                                        }
+                                    }
                                 }
 
                                 Label {
                                     text: fileStem(modelData.path)
-                                    color: hidden ? "#687086" : "#8d95aa"
+                                    color: hidden ? playerDimText : playerMutedText
                                     font.pixelSize: 12
+                                    font.bold: false
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
 
                                 Label {
                                     text: modelData.label || versionLabel(modelData.path)
-                                    color: hidden ? "#8d95aa" : "#08aeea"
+                                    color: hidden ? playerMutedText : playerAccent
                                     font.family: monoFamily
                                     font.pixelSize: 12
                                     font.bold: true
@@ -948,8 +1062,10 @@ Window {
                             MouseArea {
                                 id: versionMouse
                                 anchors.fill: parent
+                                z: 0
                                 hoverEnabled: true
-                                onClicked: toggleVersionVisibility(modelData.path)
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: selectLayerVersion(modelData.path)
                             }
                         }
                     }
@@ -965,8 +1081,8 @@ Window {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 40
                     radius: 6
-                    color: "#24273080"
-                    border.color: "#343946"
+                    color: playerCard
+                    border.color: playerBorder
 
                     GridLayout {
                         anchors.fill: parent
@@ -981,21 +1097,21 @@ Window {
 
                             Label {
                                 text: "A"
-                                color: "#8d95aa"
+                                color: playerMutedText
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 Layout.preferredWidth: 24
                                 Layout.preferredHeight: 24
                                 background: Rectangle {
                                     radius: 3
-                                    color: "#20232c"
-                                    border.color: "#343946"
+                                    color: playerInput
+                                    border.color: playerBorder
                                 }
                             }
 
                             Label {
-                                text: "---"
-                                color: "#8d95aa"
+                                text: outputResolutionLabel(currentPrimaryOutput())
+                                color: playerMutedText
                                 font.family: monoFamily
                                 font.pixelSize: 11
                                 horizontalAlignment: Text.AlignHCenter
@@ -1004,8 +1120,8 @@ Window {
                                 Layout.preferredHeight: 24
                                 background: Rectangle {
                                     radius: 3
-                                    color: "#20232c"
-                                    border.color: "#303541"
+                                    color: playerInput
+                                    border.color: playerBorderMuted
                                 }
                             }
 
@@ -1013,7 +1129,7 @@ Window {
 
                             Label {
                                 text: fileStem(activePath)
-                                color: "#d9deea"
+                                color: playerText
                                 font.pixelSize: 13
                                 font.bold: true
                                 elide: Text.ElideLeft
@@ -1042,6 +1158,7 @@ Window {
                             iconSource: "qrc:/icons/split-horizontal"
                             checkable: true
                             checked: splitEnabled
+                            colorRole: "primary"
                             buttonWidth: 38
                             pill: false
                             onClicked: toggleSplit()
@@ -1071,14 +1188,14 @@ Window {
                             Label {
                                 text: versionLabel(comparePath.length > 0 ? comparePath : activePath)
                                 visible: versions.length <= 1
-                                color: "#8d95aa"
+                                color: playerMutedText
                                 font.family: monoFamily
                                 Layout.preferredWidth: 50
                             }
 
                             Label {
                                 text: fileStem(comparePath.length > 0 ? comparePath : activePath)
-                                color: "#d9deea"
+                                color: playerText
                                 font.pixelSize: 13
                                 font.bold: true
                                 elide: Text.ElideRight
@@ -1088,8 +1205,8 @@ Window {
                             Item { Layout.fillWidth: true }
 
                             Label {
-                                text: "---"
-                                color: "#8d95aa"
+                                text: splitEnabled ? outputResolutionLabel(compareVideoOutput) : "---"
+                                color: playerMutedText
                                 font.family: monoFamily
                                 font.pixelSize: 11
                                 horizontalAlignment: Text.AlignHCenter
@@ -1098,22 +1215,22 @@ Window {
                                 Layout.preferredHeight: 24
                                 background: Rectangle {
                                     radius: 3
-                                    color: "#20232c"
-                                    border.color: "#303541"
+                                    color: playerInput
+                                    border.color: playerBorderMuted
                                 }
                             }
 
                             Label {
                                 text: "B"
-                                color: "#8d95aa"
+                                color: playerMutedText
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 Layout.preferredWidth: 24
                                 Layout.preferredHeight: 24
                                 background: Rectangle {
                                     radius: 3
-                                    color: "#20232c"
-                                    border.color: "#343946"
+                                    color: playerInput
+                                    border.color: playerBorder
                                 }
                             }
                         }
@@ -1126,7 +1243,7 @@ Window {
                     Layout.fillHeight: true
                     radius: 6
                     color: "#07080c"
-                    border.color: "#343946"
+                    border.color: playerBorder
                     clip: true
                     onWidthChanged: {
                         splitPercent = clampSplitPercent(splitPercent)
@@ -1305,163 +1422,63 @@ Window {
                     }
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 72
-                    radius: 6
-                    color: "#24273080"
-                    border.color: "#343946"
+                PlayerControls {
+                    monoFamily: playerWindow.monoFamily
+                    panelColor: playerCard
+                    borderColor: playerBorder
+                    accentColor: playerAccent
+                    position: currentPrimaryPlayer().position
+                    duration: currentPrimaryPlayer().duration
+                    playing: currentPrimaryPlayer().playbackState === MediaPlayer.PlayingState
+                    loopEnabled: playerWindow.loopPlaybackEnabled
+                    playbackSpeeds: playerWindow.playbackSpeeds
+                    playbackSpeedIndex: playerWindow.playbackSpeedIndex()
+                    zoomText: zoomLabel()
+                    zoomMode: playerWindow.zoomMode
+                    zoom: playerWindow.zoom
+                    infoVisible: playerWindow.infoVisible
+                    versionsVisible: playerWindow.versionsVisible
+                    cachePlaybackEnabled: playerWindow.cachePlaybackEnabled
+                    cacheRunning: appController.mediaCacheRunning
+                    cacheReady: appController.cachePreviewExists(activePath)
+                    timeText: durationLabel(currentPrimaryPlayer().position) + " " + padFrame(frameAt(currentPrimaryPlayer().position)) + "F / "
+                              + durationLabel(currentPrimaryPlayer().duration) + " " + padFrame(totalFrames()) + "F"
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        anchors.topMargin: 8
-                        anchors.bottomMargin: 9
-                        spacing: 6
-
-                        Slider {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 18
-                            from: 0
-                            to: Math.max(1, currentPrimaryPlayer().duration)
-                            value: currentPrimaryPlayer().position
-                            onMoved: seek(value)
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-
-                            PlayerButton {
-                                text: currentPrimaryPlayer().playbackState === MediaPlayer.PlayingState ? "||" : ""
-                                iconSource: currentPrimaryPlayer().playbackState === MediaPlayer.PlayingState ? "" : "qrc:/icons/play"
-                                onClicked: togglePlayback()
-                            }
-                            PlayerButton { text: "<"; onClicked: stepFrame(-1) }
-                            PlayerButton { text: ">"; onClicked: stepFrame(1) }
-                            PlayerButton {
-                                text: currentPrimaryPlayer().loops === MediaPlayer.Infinite ? "Loop" : "Once"
-                                buttonWidth: 62
-                                onClicked: {
-                                    const nextLoops = currentPrimaryPlayer().loops === MediaPlayer.Infinite ? 1 : MediaPlayer.Infinite
-                                    primaryPlayer.loops = nextLoops
-                                    alternatePrimaryPlayer.loops = nextLoops
-                                    comparePlayer.loops = nextLoops
-                                }
-                            }
-                            PlayerCombo {
-                                id: speedCombo
-                                fontFamily: monoFamily
-                                model: playbackSpeeds
-                                currentIndex: 3
-                                Layout.preferredWidth: 64
-                                Layout.preferredHeight: 28
-                                onActivated: {
-                                    currentPrimaryPlayer().playbackRate = playbackSpeeds[index]
-                                    standbyPrimaryPlayer().playbackRate = playbackSpeeds[index]
-                                    comparePlayer.playbackRate = playbackSpeeds[index]
-                                }
-                            }
-                            PlayerButton { text: "-"; onClicked: zoomStep(-1) }
-                            PlayerButton {
-                                id: zoomMenuButton
-                                text: zoomLabel()
-                                buttonWidth: zoomMode === "fit" ? 86 : 64
-                                onClicked: zoomMenu.open()
-
-                                Menu {
-                                    id: zoomMenu
-
-                                    MenuItem {
-                                        text: "Fit"
-                                        checkable: true
-                                        checked: zoomMode === "fit"
-                                        onTriggered: setFitZoom()
-                                    }
-
-                                    MenuItem {
-                                        text: "25%"
-                                        checkable: true
-                                        checked: zoomMode === "manual" && Math.round(zoom * 100) === 25
-                                        onTriggered: { setZoom(0.25); panX = 0; panY = 0 }
-                                    }
-
-                                    MenuItem {
-                                        text: "50%"
-                                        checkable: true
-                                        checked: zoomMode === "manual" && Math.round(zoom * 100) === 50
-                                        onTriggered: { setZoom(0.5); panX = 0; panY = 0 }
-                                    }
-
-                                    MenuItem {
-                                        text: "100%"
-                                        checkable: true
-                                        checked: zoomMode === "manual" && Math.round(zoom * 100) === 100
-                                        onTriggered: { setZoom(1.0); panX = 0; panY = 0 }
-                                    }
-
-                                    MenuItem {
-                                        text: "150%"
-                                        checkable: true
-                                        checked: zoomMode === "manual" && Math.round(zoom * 100) === 150
-                                        onTriggered: { setZoom(1.5); panX = 0; panY = 0 }
-                                    }
-
-                                    MenuItem {
-                                        text: "200%"
-                                        checkable: true
-                                        checked: zoomMode === "manual" && Math.round(zoom * 100) === 200
-                                        onTriggered: { setZoom(2.0); panX = 0; panY = 0 }
-                                    }
-                                }
-                            }
-                            PlayerButton { text: "+"; onClicked: zoomStep(1) }
-                            PlayerButton { text: "i"; checkable: true; checked: infoVisible; onClicked: infoVisible = checked }
-                            PlayerButton {
-                                text: "Layers"
-                                iconSource: versionsVisible ? "qrc:/icons/eye" : "qrc:/icons/eye-off"
-                                checkable: true
-                                checked: versionsVisible
-                                buttonWidth: 82
-                                onClicked: versionsVisible = checked
-                            }
-                            ToolbarButton {
-                                variant: "icon"
-                                color: cachePlaybackEnabled ? "success" : "secondary"
-                                icon: !cachePlaybackEnabled
-                                      ? "qrc:/icons/monitor-down"
-                                      : appController.mediaCacheRunning
-                                        ? "qrc:/icons/monitor-pause"
-                                        : appController.cachePreviewExists(activePath)
-                                          ? "qrc:/icons/monitor-check"
-                                          : "qrc:/icons/monitor-down"
-                                label: cachePlaybackEnabled ? "Проигрывать кеш preview" : "Проигрывать оригинал"
-                                active: cachePlaybackEnabled
-                                Layout.preferredWidth: AppStyle.toolbarButtonSize
-                                Layout.preferredHeight: AppStyle.toolbarButtonSize
-                                onClicked: {
-                                    cachePlaybackEnabled = !cachePlaybackEnabled
-                                    if (cachePlaybackEnabled) {
-                                        if (!appController.mediaCacheEnabled)
-                                            appController.mediaCacheEnabled = true
-                                        appController.requestCachePreview(activePath)
-                                        if (splitEnabled)
-                                            appController.requestCachePreview(comparePath)
-                                    }
-                                }
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            Label {
-                                text: durationLabel(currentPrimaryPlayer().position) + " " + padFrame(frameAt(currentPrimaryPlayer().position)) + "F / "
-                                    + durationLabel(currentPrimaryPlayer().duration) + " " + padFrame(totalFrames()) + "F"
-                                color: "#af8f5d"
-                                font.family: monoFamily
-                                font.pixelSize: 12
-                                font.bold: true
-                            }
+                    onSeekRequested: function(value) {
+                        seek(value)
+                    }
+                    onTogglePlaybackRequested: function() {
+                        togglePlayback()
+                    }
+                    onStepFrameRequested: function(direction) {
+                        stepFrame(direction)
+                    }
+                    onToggleLoopRequested: function() {
+                        playerWindow.toggleLoopMode()
+                    }
+                    onSpeedSelected: function(speed) {
+                        setPlaybackRate(speed || 1)
+                    }
+                    onZoomStepRequested: function(direction) {
+                        zoomStep(direction)
+                    }
+                    onZoomPresetRequested: function(value) {
+                        applyZoomPreset(value)
+                    }
+                    onInfoVisibleRequested: function(visible) {
+                        playerWindow.infoVisible = visible
+                    }
+                    onVersionsVisibleRequested: function(visible) {
+                        playerWindow.versionsVisible = visible
+                    }
+                    onCachePlaybackToggled: function() {
+                        playerWindow.cachePlaybackEnabled = !playerWindow.cachePlaybackEnabled
+                        if (playerWindow.cachePlaybackEnabled) {
+                            if (!appController.mediaCacheEnabled)
+                                appController.mediaCacheEnabled = true
+                            appController.requestCachePreview(activePath)
+                            if (splitEnabled)
+                                appController.requestCachePreview(comparePath)
                         }
                     }
                 }

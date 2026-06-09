@@ -237,7 +237,7 @@ private:
     bool m_convertTo25Fps = true;
     int m_duplicateModeIndex = 2;
     int m_existingModeIndex = 0;
-    bool m_latestVersionsOnly = false;
+    bool m_latestVersionsOnly = true;
     bool m_runPreviewAfterFixes = false;
     QVector<int> m_postFixRows;
     TaskSideScope m_postFixSideScope = TaskSideScope::All;

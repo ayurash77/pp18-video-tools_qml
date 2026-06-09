@@ -5,10 +5,12 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QDebug>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QStringList>
 #include <QUrl>
 
 #ifndef APP_VERSION
@@ -26,26 +28,29 @@ void applyLoggingRules()
     qputenv("QT_LOGGING_RULES", rules);
 }
 
+QString loadFontFamily(const QString& path)
+{
+    const int fontId = QFontDatabase::addApplicationFont(path);
+    if (fontId == -1) {
+        qWarning() << "Failed to load font from" << path;
+        return {};
+    }
+
+    const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
+    return families.isEmpty() ? QString() : families.first();
+}
+
 void applySystemDefaultFont(QGuiApplication& app)
 {
-#ifdef Q_OS_WIN
-    QFont font(QStringLiteral("Segoe UI"));
-    font.setPixelSize(13);
-    app.setFont(font);
-#else
-    const QString fontPath = QStringLiteral(":/fonts/sf-regular");
-    const int fontId = QFontDatabase::addApplicationFont(fontPath);
-    if (fontId == -1) {
-        qWarning() << "Failed to load font from" << fontPath;
-    }
-    const QStringList families = fontId == -1 ? QStringList() : QFontDatabase::applicationFontFamilies(fontId);
-    QFont font(families.isEmpty() ? QStringLiteral("Arial") : families.first());
+    const QString titilliumFamily = loadFontFamily(QStringLiteral(":/fonts/titillium-regular"));
+    QFont font(titilliumFamily.isEmpty() ? QStringLiteral("Arial") : titilliumFamily);
     font.setPixelSize(13);
     app.setFont(font);
 
-    QFontDatabase::addApplicationFont(":/fonts/titillium-regular");
     QFontDatabase::addApplicationFont(":/fonts/titillium-semibold");
     QFontDatabase::addApplicationFont(":/fonts/titillium-bold");
+
+#ifndef Q_OS_WIN
     QFontDatabase::addApplicationFont(":/fonts/jetbrains");
     QFontDatabase::addApplicationFont(":/fonts/sf-semibold");
     QFontDatabase::addApplicationFont(":/fonts/sf-bold");
@@ -64,6 +69,7 @@ int main(int argc, char* argv[])
     QCoreApplication::setOrganizationDomain("pp18.local");
     QCoreApplication::setApplicationName("VideoTools");
     QCoreApplication::setApplicationVersion(QStringLiteral(APP_VERSION));
+    QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/icons/app-icon")));
 
     QQuickStyle::setStyle("Fusion");
     applySystemDefaultFont(app);

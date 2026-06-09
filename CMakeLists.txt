@@ -69,6 +69,15 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 
 if(APPLE)
   target_sources(${PROJECT_NAME} PRIVATE
+    src/assets/icons/app-icon.icns
+  )
+  set_source_files_properties(src/assets/icons/app-icon.icns PROPERTIES
+    MACOSX_PACKAGE_LOCATION "Resources"
+  )
+  set_target_properties(${PROJECT_NAME} PROPERTIES
+    MACOSX_BUNDLE_ICON_FILE "app-icon.icns"
+  )
+  target_sources(${PROJECT_NAME} PRIVATE
     src/platform/NativeFileDialog_mac.mm
     src/platform/NativeFolderDialog_mac.mm
   )
@@ -76,6 +85,18 @@ else()
   target_sources(${PROJECT_NAME} PRIVATE
     src/platform/NativeFileDialog.cpp
     src/platform/NativeFolderDialog.cpp
+  )
+endif()
+
+if(WIN32)
+  set(APP_ICON_ICO_PATH "${CMAKE_SOURCE_DIR}/src/assets/icons/app-icon.ico")
+  configure_file(
+    src/assets/icons/app-icon.rc.in
+    "${CMAKE_CURRENT_BINARY_DIR}/app-icon.rc"
+    @ONLY
+  )
+  target_sources(${PROJECT_NAME} PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/app-icon.rc"
   )
 endif()
 
@@ -91,6 +112,7 @@ qt_add_qml_module(${PROJECT_NAME}
         src/qml/PlayerWindow.qml
         src/qml/components/PlayerButton.qml
         src/qml/components/PlayerCombo.qml
+        src/qml/components/PlayerControls.qml
         src/qml/components/ToolbarButton.qml
         src/qml/components/ToolbarSelect.qml
         src/qml/components/ToolbarCheck.qml
