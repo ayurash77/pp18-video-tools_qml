@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(PP18_VideoTools VERSION 0.1.4 LANGUAGES CXX)
+project(PP18_VideoTools VERSION 0.1.5 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
